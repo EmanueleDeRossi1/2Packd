@@ -1,0 +1,23 @@
+{
+	"name": "gym-occupancy-proxy",
+	"version": "1.0.0",
+	"description": "Cloudflare Worker proxy for aggregating gym occupancy data",
+	"main": "src/index.js",
+	"scripts": {
+	  "dev": "wrangler dev",
+	  "deploy": "wrangler deploy",
+	  "deploy:dev": "wrangler deploy --env dev",
+	  "tail": "wrangler tail",
+	  "kv:list": "wrangler kv:key list --binding=GYM_DATA",
+	  "kv:get": "wrangler kv:key get gym-list --binding=GYM_DATA"
+	},
+	"keywords": [
+	  "cloudflare",
+	  "workers",
+	  "gym",
+	  "occupancy",
+	  "proxy"
+	],
+	"author": "",
+	"license": "MIT"
+  }
