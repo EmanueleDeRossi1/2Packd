@@ -6,39 +6,104 @@ import {
   transformBestFit
 } from './transformers/gyms.js';
 
+import {
+  transformFitnessFirstOccupancy,
+  transformFitXOccupancy,
+  transformRSGOccupancy,
+  transformBestFitOccupancy
+} from './transformers/occupancy.js';
 
-const TRANSFORMERS = {
+const LIST_TRANSFORMERS = {
   'fitnessfirst': transformFitnessFirst,
   'fitx': transformFitX,
   'rsg-group': transformRSG,
   'bestfit': transformBestFit
 };
 
+
+const OCCUPANCY_TRANSFORMERS = {
+  'fitnessfirst': transformFitnessFirstOccupancy,
+  'fitx': transformFitXOccupancy,
+  'rsg-group': transformRSGOccupancy,
+  'bestfit': transformBestFitOccupancy
+};
+
 async function fetchOperatorGyms(operator) {
 
-  const response = await fetch(operator.gymListUrl);
+  try {
+    const response = await fetch(operator.gymListUrl, {
+      headers: operator.gymListHeaders
+    });
 
-  console.log(`Fetching gym list from ${operator.name}...`);
+    if (!response.ok) {
+      console.error(`Failed to fetch gym list from ${operator.name}: ${response.status} ${response.statusText}`);
+      return [];
+    }
 
-  if (!response.ok) {
-    console.error(`Failed to fetch gym list from ${operator.name}: ${response.status} ${response.statusText}`);
-    return [];
-  }
   const rawData = await response.json();
-  const transformer = TRANSFORMERS[operator.id];
+  const transformer = LIST_TRANSFORMERS[operator.id];
   const gymList = transformer(rawData);
 
   return gymList;
   
-};
+} catch (error) {
+  console.error(`Error in fetchOperatorGyms for ${operator.name}:`, error);
+  return [];
+  }
+}
+
+// Fitness first has a pagination limit
+// we have to iterate through all pages to fetch all gyms
+async function fetchFitnessFirstGyms(operator) {
+
+  const allFitnessFirstRawData = [];
+  let url = operator.gymListUrl;
+
+  // collect all data
+  while (url) {
+    try {
+      const response = await fetch(url, {
+        headers: operator.gymListHeaders
+      });
+
+      if (!response.ok) {
+        console.error(`Failed to fetch gym list from ${operator.name}: ${response.status} ${response.statusText}`);
+        return [];
+      }
+
+      const pageData = await response.json();
+      url = pageData.links?.next?.href || null;
+  
+      allFitnessFirstRawData.push(...pageData.data);
+  
+      } catch (error) {
+          console.error(`Error fetching gyms for operator ${operator.name}:`, error);
+          return [];
+      }
+    }
+
+  const transformer = LIST_TRANSFORMERS[operator.id];
+  const gymList = transformer(allFitnessFirstRawData);
+
+  return gymList;
+
+}
+
 
 async function fetchAllGyms(env) {
   const allGyms = [];
 
   for (const operator of OPERATORS) {
     try {
-        const gyms = await fetchOperatorGyms(operator);
-        allGyms.push(...gyms);
+        let gyms;
+
+        if (operator.id === 'fitnessfirst') {
+          gyms = await fetchFitnessFirstGyms(operator);
+        } else {
+          gyms = await fetchOperatorGyms(operator);
+        }
+
+      allGyms.push(...gyms);
       } catch (error) {
         console.error(`Error fetching gyms for operator ${operator.name}:`, error);
       }
@@ -78,21 +143,24 @@ export default {
     }
 
     else if (url.pathname.endsWith('/occupancy')) {
-      const operator = url.pathname.split('/')[1];
+      const operatorId = url.pathname.split('/')[1];
       const gymId = url.pathname.split('/')[2];
 
       for (const operator of OPERATORS) {
-        if (operator.id === operator) {
+        if (operator.id === operatorId) {
           const operatorOccupancyUrl = operator.occupancyUrl.replace('{gymId}', gymId)
           try {
             const response = await fetch(operatorOccupancyUrl, {
               method: 'GET',
-              headers: operator.headers
+              headers: operator.occupancyHeaders
             });
-            const data = await response.json();
+            const rawData = await response.json();
 
-            return new Response(JSON.stringify(data), {
-              headers: { 'content-type': 'application/json' }
+            const transformer = OCCUPANCY_TRANSFORMERS[operatorId];
+            const transformedData = transformer(rawData);
+    
+            return new Response(JSON.stringify(transformedData), {
+                  headers: { 'content-type': 'application/json' }
             })
               
           } catch(error) {

@@ -3,17 +3,17 @@ export function transformRSG(rawData){
         gymId: gym.id,
         gymName: gym.studioName,
         city: gym.address.city,
-        operator: 'rsg-group'
+        operatorId: 'rsg-group'
 
     }))
 }
 
 export function transformFitnessFirst(rawData){
-    return rawData.data.map(gym => ({
-        gymId: gym.attributes.drupal_internal__nid,
-        gymName: gym.attributes.title,
+    return rawData.map(gym => ({
+        gymId: gym.attributes.field_magicline_studio_id,
+        gymName: `Fitness First ${gym.attributes.title}`,
         city: gym.attributes.field_address.locality,
-        operator: 'fitnessfirst'
+        operatorId: 'fitnessfirst'
     }))
 }
 
@@ -22,7 +22,7 @@ export function transformFitX(rawData){
         gymId: gym.id,
         gymName: gym.name,
         city: gym.address.city,
-        operator: 'fitx'
+        operatorId: 'fitx'
     }))
 }
 
@@ -31,6 +31,6 @@ export function transformBestFit(rawData){
         gymId: gym.id,
         gymName: gym.studioName,
         city: gym.address.city,
-        operator: 'bestfit'
+        operatorId: 'bestfit'
     }))
 }

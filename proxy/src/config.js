@@ -4,7 +4,8 @@ export const OPERATORS = [
       name: 'Fitness First',
       gymListUrl: 'https://www.fitnessfirst.de/api/v1/node/club_page',
       occupancyUrl: 'https://www.fitnessfirst.de/club/api/checkins/{gymId}',
-      headers: {},
+      gymListHeaders: {},
+      occupancyHeaders: {},
       timeout: 10000
     },
     {
@@ -12,7 +13,10 @@ export const OPERATORS = [
       name: 'FitX',
       gymListUrl: 'https://mein.fitx.de/nox/public/v1/studios',
       occupancyUrl: 'https://mein.fitx.de/nox/public/v1/studios/{gymId}/utilization',
-      headers: {
+      gymListHeaders: {
+        'x-tenant': 'fitx'
+      },
+      occupancyHeaders: {
         'x-tenant': 'fitx'
       },
       timeout: 10000
@@ -22,8 +26,9 @@ export const OPERATORS = [
       name: 'RSG Group',
       gymListUrl: 'https://rsg-group.api.magicline.com/connect/v1/studio',
       occupancyUrl: 'https://my.mcfit.com/nox/public/v1/studios/{gymId}/utilization/v2/today',
-      headers: {
-        'x-tenant': 'rsg-group'
+      occupancyHeaders: {
+        'x-tenant': 'rsg-group',
+        'Accept': 'application/json'
       },
       timeout: 10000
     },
@@ -32,7 +37,8 @@ export const OPERATORS = [
       name: 'BestFit',
       gymListUrl: 'https://bestfit.api.magicline.com/connect/v1/studio',
       occupancyUrl: 'https://bestfit.api.magicline.com/connect/v1/studio/{gymId}/utilization',
-      headers: {},
+      gymListHeaders: {},
+      occupancyHeaders: {},
       timeout: 10000
     }
   ];
