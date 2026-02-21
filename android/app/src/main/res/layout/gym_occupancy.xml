@@ -1,0 +1,72 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#353535"
+    android:padding="12dp">
+
+    <!-- Gym name text (top left) - Bigger -->
+    <TextView
+        android:id="@+id/gym_name_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:text="Gym Name"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:fontFamily="sans-serif-medium"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_toStartOf="@id/refresh_button"
+        android:layout_marginEnd="12dp" />
+
+    <!-- Refresh button (top right) -->
+    <ImageButton
+        android:id="@+id/refresh_button"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentTop="true"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:src="@android:drawable/ic_popup_sync"
+        android:tint="#A5A5A5"
+        android:contentDescription="Refresh"
+        android:scaleType="fitCenter"
+        android:padding="4dp" />
+
+    <!-- Bottom container -->
+    <LinearLayout
+        android:id="@+id/bottom_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/gym_name_text"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Left side: Percentage only - Smaller and bold -->
+        <TextView
+            android:id="@+id/current_occupancy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="--"
+            android:textColor="#FFFFFF"
+            android:textSize="46sp"
+            android:fontFamily="sans-serif"
+            android:textStyle="bold"
+            android:includeFontPadding="false"
+            android:lineSpacingExtra="0dp"
+            android:layout_marginEnd="16dp" />
+
+        <!-- Right side: Occupancy chart -->
+        <ImageView
+            android:id="@+id/occupancy_chart"
+            android:layout_width="0dp"
+            android:layout_height="140dp"
+            android:layout_weight="1"
+            android:scaleType="fitXY"
+            android:contentDescription="Occupancy chart throughout the day" />
+
+    </LinearLayout>
+
+</RelativeLayout>
