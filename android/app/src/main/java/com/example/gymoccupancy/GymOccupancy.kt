@@ -9,6 +9,8 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.LinearGradient
+import android.graphics.Shader
 import android.graphics.Color
 import android.widget.RemoteViews
 
@@ -116,13 +118,12 @@ fun blendColors(color1: String, color2: String, ratio: Float): Int {
 
 // suspend marks this as a coroutine function (can be paused/resumend)
 // without blocking the thread
-
 // = is the "single-expression function" syntax
 suspend fun fetchOccupancyData(operatorId: String, gymId: String): DayUtilization? =
-    // this switches the coroutin to a backgroud thread for I/O operations
-    // where Dispatchers.IO is a thread pool for I/O
-    // a thread pool is a collection of pre-created worker threads
-    // that are reused for tasks. So you dont need to create a thread each time
+// this switches the coroutin to a backgroud thread for I/O operations
+// where Dispatchers.IO is a thread pool for I/O
+// a thread pool is a collection of pre-created worker threads
+// that are reused for tasks. So you dont need to create a thread each time
     // a thread is just a separate path of exeuction in your program (multiple threads=your app can do multiple things at once)
     withContext(Dispatchers.IO) {
 
@@ -171,7 +172,7 @@ suspend fun fetchOccupancyData(operatorId: String, gymId: String): DayUtilizatio
                     allSlots.filter { it.startTime <= currentStartTime }
                 } else {
                     allSlots
-             }
+                }
                 return@withContext DayUtilization(
                     slots = slots,
                     currentOccupancy = currentOccupancy,
@@ -231,26 +232,30 @@ private fun createOccupancyChart(
         )
         val top = chartHeight - barHeight
 
-        // Use dynamic color for current bar, gray for others
-        val paint = if (slot.isCurrent) {
-            Paint().apply {
-                color = getOccupancyColor(slot.occupancy)
-                style = Paint.Style.FILL
-                isAntiAlias = true
-            }
+        val baseColor = if (slot.isCurrent) {
+            getOccupancyColor(slot.occupancy)
         } else {
-            barPaint
+            Color.parseColor("#6B6B6B")
         }
 
-        canvas.drawRoundRect(
-            left,
-            top,
-            right,
-            chartHeight,
-            cornerRadius,
-            cornerRadius,
-            paint
-        )
+        // Extract RGB from baseColor to build transparent version
+        val r = Color.red(baseColor)
+        val g = Color.green(baseColor)
+        val b = Color.blue(baseColor)
+
+        val paint = Paint().apply {
+            style = Paint.Style.FILL
+            isAntiAlias = true
+            shader = LinearGradient(
+                0f, top,                          // start: top of bar
+                0f, chartHeight,                  // end: bottom of bar
+                Color.argb(200, r, g, b),         // ~80% opacity at top
+                Color.argb(40, r, g, b),          // ~15% opacity at bottom
+                Shader.TileMode.CLAMP
+            )
+        }
+        // rounded bar (all corners)
+        canvas.drawRoundRect(left, top, right, chartHeight, cornerRadius, cornerRadius, paint)
     }
 
     // Draw time labels with higher quality
