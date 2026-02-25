@@ -211,13 +211,6 @@ private fun createOccupancyChart(
     val barSpacing = 3f
     val barWidth = (width.toFloat() / dayUtilization.totalSlots) - barSpacing
 
-    // Paint for regular bars
-    val barPaint = Paint().apply {
-        color = Color.parseColor("#6B6B6B")
-        style = Paint.Style.FILL
-        isAntiAlias = true
-    }
-
     // Minimum bar height for visibility
     val minBarHeight = 4f
     val cornerRadius = 3f
