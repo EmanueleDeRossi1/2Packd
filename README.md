@@ -2,7 +2,7 @@
 
 An Android home-screen widget that displays real-time gym occupancy and daily utilization charts.
 
-It currently supports 784 total gyms from the following operators: 
+It currently supports 784 total gyms from the following gym chains: 
 
 * John Reed
 * McFit
