@@ -13,6 +13,8 @@ import android.graphics.LinearGradient
 import android.graphics.Shader
 import android.graphics.Color
 import android.widget.RemoteViews
+import android.os.Bundle
+import android.util.SizeF
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -282,7 +284,6 @@ class GymOccupancy : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        // There may be multiple widgets active, so update all of them
         for (appWidgetId in appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId)
         }
@@ -296,93 +297,103 @@ class GymOccupancy : AppWidgetProvider() {
         }
     }
 
-    override fun onEnabled(context: Context) {
-        // Enter relevant functionality for when the first widget is created
-    }
+    override fun onEnabled(context: Context) {}
+    override fun onDisabled(context: Context) {}
 
-    override fun onDisabled(context: Context) {
-        // Enter relevant functionality for when the last widget is disabled
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        updateAppWidget(context, appWidgetManager, appWidgetId)
     }
 }
-// args: appWidgetId (each widget has its own id!) and appWidgetManager is ...
+
 internal fun updateAppWidget(
     context: Context,
     appWidgetManager: AppWidgetManager,
     appWidgetId: Int
 ) {
-    // this checks SharedPreferences to see which gymId was saved for this widget
     val gymId = getGymId(context, appWidgetId)
     val operatorId = getOperatorId(context, appWidgetId)
 
-    // if no gym was saved, just create a default view
-    // it loads the widget layout XML file and displays without data
-    // the default text should be smth like "Select a gym"
     if (gymId == null || operatorId == null) {
-        val views = RemoteViews(context.packageName, R.layout.gym_occupancy)
+        val views = RemoteViews(context.packageName, R.layout.gym_occupancy_large)
         appWidgetManager.updateAppWidget(appWidgetId, views)
         return
     }
 
     val gymName = getGymName(context, appWidgetId)
 
-    // launch a coroutine that runs on the Main/UI thread (so we can update UI after fetching data)
-    // the main thread can only do UI work (update text, buttons etc)
-    // coroutine = a function that can be paused and resumed without blocking the thread it's running on
-    // coroutine scope = the container where coroutines live :) and die :(
     CoroutineScope(Dispatchers.Main).launch {
-        // this function internally switches to the the IO thread ()
-        // and returns the result from the API back
         val dayUtilization = fetchOccupancyData(operatorId, gymId)
-        // back on Main thread
 
-        // RemoteViews is a special view system for widgets
-        // A View is any visual element in an Android app (TextView, Button etc.)
-        // kinda like HTML elements (<p>, <button> etc.)
-        // The widget layout XML defines which Views to use and how they are arranged
-        val views = RemoteViews(context.packageName, R.layout.gym_occupancy)
-
-        // This updates the text (gym name)
-        views.setTextViewText(R.id.gym_name_text, gymName)
-
-        // update all views based on data availability
-        if (dayUtilization != null) {
-            views.setTextViewText(R.id.current_occupancy, "${dayUtilization.currentOccupancy}%")
-
-            // Increased dimensions for better quality (2x or more)
-            val bitmap = createOccupancyChart(context, dayUtilization, 800, 200)
-            if (bitmap != null) {
-                views.setImageViewBitmap(R.id.occupancy_chart, bitmap)
-            } else {
-                views.setViewVisibility(R.id.occupancy_chart, android.view.View.GONE)
-            }
-        } else {
-            views.setTextViewText(R.id.current_occupancy, "—")
-        }
-        // This creates a refresh button action
-        // An intent = a massage to say "do this action"
         val refreshIntent = Intent(context, GymOccupancy::class.java).apply<Intent> {
             action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
         }
-
-        // you wrap this refreshintent in a PendedingIntent
-        // this is a "future intent", do it later
-        // getBroadcast is for sending a broadcast message when triggered
         val refreshPendingIntent = PendingIntent.getBroadcast(
             context,
             appWidgetId,
             refreshIntent,
-            // FLAG_IMMUTABLE -> PendingIntent cannot be changed after creation (security feature)
-            // FLAG_UPDATE_CURRENT -> if PendingIntent already exists, update it
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        // attach Pending INtent to button, so it can be clicked
-        views.setOnClickPendingIntent(R.id.refresh_button, refreshPendingIntent)
+        // helper function that picks the right layout based on actual size
+        // this is called once per size that the launcher reports
+        fun createRemoteViews(size: SizeF): RemoteViews {
+            val occupancyText = if (dayUtilization != null) "${dayUtilization.currentOccupancy}%" else "—"
 
-        // Display the updated widget.
-        // not to confuse with updateAppWidget you're in now
-        // this is a function on the AppWidgetManager provided by Android
-        appWidgetManager.updateAppWidget(appWidgetId, views)
+            return when {
+                // square or near-square → small (only percentage)
+                size.width < size.height * 1.5f -> {
+                    RemoteViews(context.packageName, R.layout.gym_occupancy_small).also {
+                        it.setTextViewText(R.id.current_occupancy, occupancyText)
+                        it.setOnClickPendingIntent(R.id.refresh_button, refreshPendingIntent)
+                    }
+                }
+                // wide but short, OR not wide enough → medium (name + percentage, no chart)
+                size.height < 100f || size.width < 200f -> {
+                    RemoteViews(context.packageName, R.layout.gym_occupancy_medium).also {
+                        it.setTextViewText(R.id.current_occupancy, occupancyText)
+                        it.setTextViewText(R.id.gym_name_text, gymName)
+                        it.setOnClickPendingIntent(R.id.refresh_button, refreshPendingIntent)
+                    }
+                }
+                // wide and tall → large (name + percentage + chart)
+                else -> {
+                    RemoteViews(context.packageName, R.layout.gym_occupancy_large).also {
+                        it.setTextViewText(R.id.current_occupancy, occupancyText)
+                        it.setTextViewText(R.id.gym_name_text, gymName)
+                        it.setOnClickPendingIntent(R.id.refresh_button, refreshPendingIntent)
+                        if (dayUtilization != null) {
+                            val bitmap = createOccupancyChart(context, dayUtilization, 800, 200)
+                            if (bitmap != null) {
+                                it.setImageViewBitmap(R.id.occupancy_chart, bitmap)
+                            } else {
+                                it.setViewVisibility(R.id.occupancy_chart, android.view.View.GONE)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // get the exact sizes the launcher is using for this widget on this device
+        val sizes = appWidgetManager
+            .getAppWidgetOptions(appWidgetId)
+            .getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
+
+        val remoteViews = if (sizes.isNullOrEmpty()) {
+            // launcher doesn't support OPTION_APPWIDGET_SIZES, fall back to large
+            createRemoteViews(SizeF(300f, 200f))
+        } else {
+            // let Android pick the right layout for each reported size
+            RemoteViews(sizes.associateWith(::createRemoteViews))
+        }
+
+        appWidgetManager.updateAppWidget(appWidgetId, remoteViews)
     }
 }

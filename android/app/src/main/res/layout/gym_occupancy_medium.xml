@@ -4,7 +4,6 @@
     android:background="#353535"
     android:padding="12dp">
 
-    <!-- Gym name text (top left) - Bigger -->
     <TextView
         android:id="@+id/gym_name_text"
         android:layout_width="wrap_content"
@@ -20,7 +19,6 @@
         android:layout_toStartOf="@id/refresh_button"
         android:layout_marginEnd="12dp" />
 
-    <!-- Refresh button (top right) -->
     <ImageButton
         android:id="@+id/refresh_button"
         android:layout_width="28dp"
@@ -34,39 +32,17 @@
         android:scaleType="fitCenter"
         android:padding="4dp" />
 
-    <!-- Bottom container -->
-    <LinearLayout
-        android:id="@+id/bottom_container"
-        android:layout_width="match_parent"
+    <TextView
+        android:id="@+id/current_occupancy"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/gym_name_text"
-        android:layout_marginTop="8dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <!-- Left side: Percentage only - Smaller and bold -->
-        <TextView
-            android:id="@+id/current_occupancy"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="--"
-            android:textColor="#FFFFFF"
-            android:textSize="35sp"
-            android:fontFamily="sans-serif-light"
-            android:textStyle="normal"
-            android:includeFontPadding="false"
-            android:lineSpacingExtra="0dp"
-            android:layout_marginEnd="16dp" />
-
-        <!-- Right side: Occupancy chart -->
-        <ImageView
-            android:id="@+id/occupancy_chart"
-            android:layout_width="0dp"
-            android:layout_height="140dp"
-            android:layout_weight="1"
-            android:scaleType="fitXY"
-            android:contentDescription="Occupancy chart throughout the day" />
-
-    </LinearLayout>
+        android:layout_centerInParent="true"
+        android:text="--"
+        android:textColor="#FFFFFF"
+        android:textSize="35sp"
+        android:fontFamily="sans-serif-light"
+        android:textStyle="normal"
+        android:includeFontPadding="false" />
 
 </RelativeLayout>
