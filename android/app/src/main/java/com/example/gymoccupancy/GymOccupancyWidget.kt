@@ -44,6 +44,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filter
@@ -175,6 +176,7 @@ class GymOccupancyWidget : GlanceAppWidget() {
                 val cachedLogo = logoFileForWidget(context, appWidgetId)
                 val logoFile = if (cachedLogo.exists()) cachedLogo else null
                 emit(WidgetState(gymName, null, logoFile, isLoading = true))
+                delay(300)
 
                 val gymId = getGymId(context, appWidgetId)
                 val operatorId = getOperatorId(context, appWidgetId)
