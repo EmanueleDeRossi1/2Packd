@@ -65,3 +65,19 @@ GET /{operatorId}/{gymId}/occupancy
 ```
 
 Returns occupancy time slots for a gym.
+
+```
+POST /trigger
+X-Trigger-Secret: <secret>
+```
+
+Manually triggers the scheduled job that re-fetches and caches all gym lists in KV storage. Protected by a secret token.
+
+---
+
+### Deploying the Proxy
+
+```bash
+cd proxy
+npm run deploy
+```

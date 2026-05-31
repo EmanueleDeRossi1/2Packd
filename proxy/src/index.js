@@ -120,6 +120,12 @@ async function fetchAllGyms(env) {
   return allGyms;
 }
 
+async function runScheduledJob(env) {
+  console.log('Running scheduled job at:', new Date().toISOString());
+  const gymList = await fetchAllGyms(env);
+  console.log(`Fetched and stored ${gymList.length} gyms`);
+}
+
 
 export default {
 
@@ -171,19 +177,19 @@ export default {
       }
     }
 
+    if (url.pathname === '/trigger') {
+      const secret = request.headers.get('X-Trigger-Secret');
+      if (!env.TRIGGER_SECRET || secret !== env.TRIGGER_SECRET) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      await runScheduledJob(env);
+      return new Response('OK');
+    }
+
     return new Response('Not found', { status: 404 })
   },
 
   async scheduled(event, env, ctx) {
-    console.log('Scheduled job running at:', new Date().toISOString());
-
-    try {
-      const GymList = await fetchAllGyms(env);
-
-      console.log('Fetched and stored ${gymList.length} gyms')
-
-    } catch (error) {
-      console.error('Scheduled job failed:', error.message);
-    }
+    await runScheduledJob(env);
   }
 }
