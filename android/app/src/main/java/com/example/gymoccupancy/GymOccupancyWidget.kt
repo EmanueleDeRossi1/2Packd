@@ -53,9 +53,20 @@ import kotlinx.coroutines.flow.transformLatest
 
 private val AppWidgetIdKey = ActionParameters.Key<Int>("appWidgetId")
 
+private val refreshTimestamps = mutableMapOf<Int, ArrayDeque<Long>>()
+private const val RATE_LIMIT_MAX = 3
+private const val RATE_LIMIT_WINDOW_MS = 60_000L
+
 class RefreshAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val appWidgetId = parameters[AppWidgetIdKey] ?: return
+        val now = System.currentTimeMillis()
+        val timestamps = refreshTimestamps.getOrPut(appWidgetId) { ArrayDeque() }
+        while (timestamps.isNotEmpty() && now - timestamps.first() > RATE_LIMIT_WINDOW_MS) {
+            timestamps.removeFirst()
+        }
+        if (timestamps.size >= RATE_LIMIT_MAX) return
+        timestamps.addLast(now)
         GymOccupancyWidget.notifyConfigChanged(appWidgetId)
     }
 }
