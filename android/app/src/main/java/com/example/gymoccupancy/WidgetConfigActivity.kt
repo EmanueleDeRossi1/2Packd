@@ -24,10 +24,11 @@ data class Gym(
     val id: String,
     val city: String,
     val gymName: String,
+    val location: String,
     val logoUrl: String?
 ) {
     val displayName: String
-        get() = "${city.uppercase()} $gymName"
+        get() = "${city.uppercase()} $location"
 }
 
 
@@ -65,11 +66,12 @@ suspend fun fetchGyms(): List<Gym> =
                     val operatorId = gymJson.optString("operatorId", "")
                     val gymId = gymJson.optString("gymId", "")
                     val gymName = gymJson.optString("gymName", "")
+                    val location = gymJson.optString("location", "").ifEmpty { gymName }
                     val city = gymJson.optString("city", "") ?: ""
                     val logoUrl = gymJson.optString("logoUrl", "").ifEmpty { null }
 
                     if (gymId.isNotEmpty() && gymName.isNotEmpty() && city.isNotEmpty() && operatorId.isNotEmpty()) {
-                        gyms.add(Gym(operatorId, gymId, city, gymName, logoUrl))
+                        gyms.add(Gym(operatorId, gymId, city, gymName, location, logoUrl))
                     }
                 }
                 // return ordered list of gyms
@@ -138,7 +140,7 @@ class WidgetConfigActivity : Activity() {
 
                     saveGymId(this@WidgetConfigActivity, appWidgetId, selectedGymId)
                     saveOperatorId(this@WidgetConfigActivity, appWidgetId, gyms[position].operatorId)
-                    saveGymName(this@WidgetConfigActivity, appWidgetId, gyms[position].gymName)
+                    saveGymName(this@WidgetConfigActivity, appWidgetId, gyms[position].location)
                     // Delete cached logo so the next update re-downloads for the new brand
                     logoFileForWidget(this@WidgetConfigActivity, appWidgetId).delete()
                     saveLogoUrl(this@WidgetConfigActivity, appWidgetId, gyms[position].logoUrl)
