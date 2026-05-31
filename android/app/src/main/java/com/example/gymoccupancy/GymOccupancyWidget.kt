@@ -163,16 +163,21 @@ class GymOccupancyWidget : GlanceAppWidget() {
         data class WidgetState(
             val gymName: String?,
             val dayUtilization: DayUtilization?,
-            val logoFile: java.io.File?
+            val logoFile: java.io.File?,
+            val isLoading: Boolean = false
         )
 
         val dataFlow: Flow<WidgetState> = configUpdates
             .onStart { emit(appWidgetId) }
             .filter { it == appWidgetId }
-            .mapLatest {
+            .transformLatest {
+                val gymName = getGymName(context, appWidgetId)
+                val cachedLogo = logoFileForWidget(context, appWidgetId)
+                val logoFile = if (cachedLogo.exists()) cachedLogo else null
+                emit(WidgetState(gymName, null, logoFile, isLoading = true))
+
                 val gymId = getGymId(context, appWidgetId)
                 val operatorId = getOperatorId(context, appWidgetId)
-                val gymName = getGymName(context, appWidgetId)
                 android.util.Log.d("GymWidget", "fetching data: gymId=$gymId operatorId=$operatorId")
                 val data = if (gymId != null && operatorId != null) {
                     fetchOccupancyData(operatorId, gymId).also {
@@ -180,16 +185,13 @@ class GymOccupancyWidget : GlanceAppWidget() {
                     }
                 } else null
 
-                val cachedLogo = logoFileForWidget(context, appWidgetId)
-                val logoFile = if (cachedLogo.exists()) cachedLogo
-                               else fetchAndCacheLogo(context, appWidgetId)
-
-                WidgetState(gymName, data, logoFile)
+                val freshLogo = if (logoFile == null) fetchAndCacheLogo(context, appWidgetId) else logoFile
+                emit(WidgetState(gymName, data, freshLogo, isLoading = false))
             }
 
         provideContent {
             val state by dataFlow.collectAsState(initial = WidgetState(null, null, null))
-            WidgetContent(appWidgetId, state.gymName, state.dayUtilization, state.logoFile)
+            WidgetContent(appWidgetId, state.gymName, state.dayUtilization, state.logoFile, state.isLoading)
         }
     }
 }
@@ -200,13 +202,18 @@ private fun WidgetContent(
     appWidgetId: Int,
     gymName: String?,
     dayUtilization: DayUtilization?,
-    logoFile: java.io.File?
+    logoFile: java.io.File?,
+    isLoading: Boolean = false
 ) {
     val size = LocalSize.current
     val context = LocalContext.current
     val density = context.resources.displayMetrics.density
 
-    val occupancyText = if (dayUtilization != null) "${dayUtilization.currentOccupancy}%" else "—"
+    val occupancyText = when {
+        isLoading -> "..."
+        dayUtilization != null -> "${dayUtilization.currentOccupancy}%"
+        else -> "—"
+    }
     val isWide = size.width > size.height * 1.5f
     val isTall = size.height > 100.dp
 
