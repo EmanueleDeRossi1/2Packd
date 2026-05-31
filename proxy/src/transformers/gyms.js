@@ -5,19 +5,19 @@ const RSG_BRAND_RULES = [
     { prefix: 'KLUB McFIT',         brand: 'klub-mcfit' },
     { prefix: 'JOHN REED',          brand: 'john-reed' },
     { prefix: 'John Reed',          brand: 'john-reed' },
-    { prefix: "JOHN & JANE'S",      brand: 'john-jane' },
+    { prefix: "JOHN & JANE'S",      brand: null },       // no occupancy data
     { prefix: "Gold's Gym",         brand: 'golds-gym' },
-    { prefix: 'High5 Ghost Studio', brand: 'high5' },
+    { prefix: 'High5 Ghost Studio', brand: null },       // no occupancy data
     { prefix: 'McFIT Ghost Studio', brand: 'mcfit' },
-    { prefix: 'ALDI SPORTS',        brand: 'aldi-sports' },
-    { prefix: 'HEIMAT',             brand: 'heimat' },
+    { prefix: 'ALDI SPORTS',        brand: null },       // no occupancy data
+    { prefix: 'HEIMAT',             brand: null },       // no occupancy data
     { prefix: 'RSG Group',          brand: null },   // exclude
     { prefix: 'Zentrale',           brand: null },   // exclude
   ];
   
   const BESTFIT_BRAND_RULES = [
     { prefix: 'Ai Fitness',    brand: 'ai-fitness' },
-    { prefix: 'FIT STAR',      brand: 'fit-star' },
+    { prefix: 'FIT STAR',      brand: null },        // no occupancy data
     { prefix: 'Testing',       brand: null },        // exclude
     { prefix: 'Ai Verwaltung', brand: null },        // exclude
   ];
