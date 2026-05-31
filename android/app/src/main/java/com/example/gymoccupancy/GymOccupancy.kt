@@ -49,20 +49,6 @@ fun getGymName(context: Context, addWidgetId: Int): String? {
     return prefs.getString("gym_name_$addWidgetId", null)
 }
 
-fun deleteGymId(context: Context, appWidgetId: Int) {
-    val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
-    prefs.edit {remove("gym_id_$appWidgetId")}
-}
-
-fun deleteOperatorId(context: Context, appWidgetId: Int) {
-    val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
-    prefs.edit {remove("operator_id_$appWidgetId")}
-}
-
-fun deleteGymName(context: Context, appWidgetId: Int) {
-    val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
-    prefs.edit {remove("gym_name_$appWidgetId")}
-}
 
 fun saveLogoUrl(context: Context, appWidgetId: Int, logoUrl: String?) {
     val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
@@ -77,11 +63,6 @@ fun getLogoUrl(context: Context, appWidgetId: Int): String? {
     return prefs.getString("logo_url_$appWidgetId", null)
 }
 
-fun deleteLogoUrl(context: Context, appWidgetId: Int) {
-    val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
-    prefs.edit { remove("logo_url_$appWidgetId") }
-    logoFileForWidget(context, appWidgetId).delete()
-}
 
 fun logoFileForWidget(context: Context, appWidgetId: Int): File =
     File(context.filesDir, "logo_$appWidgetId.png")
