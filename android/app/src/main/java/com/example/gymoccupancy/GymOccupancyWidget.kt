@@ -93,7 +93,7 @@ fun createOccupancyChart(
 
     val labelHeight = 24f
     val chartHeight = height - labelHeight
-    val barSpacing = 3f
+    val barSpacing = 6f
     val barWidth = (width.toFloat() / dayUtilization.totalSlots) - barSpacing
     val minBarHeight = 4f
     val cornerRadius = 3f
