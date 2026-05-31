@@ -9,6 +9,8 @@
     android:previewImage="@drawable/example_appwidget_preview"
     android:previewLayout="@layout/gym_occupancy_large"
     android:resizeMode="horizontal|vertical"
+    android:maxResizeWidth="400dp"
+    android:maxResizeHeight="180dp"
     android:targetCellWidth="4"
     android:targetCellHeight="2"
     android:updatePeriodMillis="3600000"

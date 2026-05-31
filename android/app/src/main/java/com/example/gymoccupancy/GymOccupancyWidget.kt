@@ -223,26 +223,32 @@ private fun WidgetContent(
         android.graphics.BitmapFactory.decodeFile(logoFile.absolutePath)
     } else null
 
-    Column(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .background(R.color.widget_background)
-            .padding(12.dp)
-            .clickable(actionRunCallback<RefreshAction>(actionParametersOf(AppWidgetIdKey to appWidgetId))),
-        verticalAlignment = Alignment.Vertical.Top
-    ) {
-        // Top row: gym name on left, loading indicator (if active), logo on right
+    if (isWide && !isTall) {
+        // 1x4 single-row layout: percentage | gym name | logo
         Row(
-            modifier = GlanceModifier.fillMaxWidth(),
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .background(R.color.widget_background)
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .clickable(actionRunCallback<RefreshAction>(actionParametersOf(AppWidgetIdKey to appWidgetId))),
             verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
+            Text(
+                text = occupancyText,
+                style = TextStyle(
+                    color = ColorProvider(R.color.widget_text_primary),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+            Spacer(modifier = GlanceModifier.width(12.dp))
             if (gymName != null) {
                 Text(
                     text = gymName,
                     style = TextStyle(
                         color = ColorProvider(R.color.widget_text_primary),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Normal
                     ),
                     maxLines = 1,
                     modifier = GlanceModifier.defaultWeight()
@@ -251,54 +257,93 @@ private fun WidgetContent(
                 Spacer(modifier = GlanceModifier.defaultWeight())
             }
             if (logoBitmap != null) {
+                Spacer(modifier = GlanceModifier.width(8.dp))
                 Image(
                     provider = ImageProvider(logoBitmap),
                     contentDescription = gymName,
                     contentScale = ContentScale.Fit,
-                    modifier = GlanceModifier.height(44.dp).width(44.dp)
+                    modifier = GlanceModifier.height(36.dp).width(36.dp)
                 )
             }
         }
-
-        Spacer(modifier = GlanceModifier.height(4.dp))
-
-        if (isWide && isTall && dayUtilization != null) {
-            // Bottom row: occupancy % on left, chart on right
+    } else {
+        Column(
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .background(R.color.widget_background)
+                .padding(12.dp)
+                .clickable(actionRunCallback<RefreshAction>(actionParametersOf(AppWidgetIdKey to appWidgetId))),
+            verticalAlignment = Alignment.Vertical.Top
+        ) {
+            // Top row: gym name on left, logo on right
             Row(
-                modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Vertical.CenterVertically
             ) {
+                if (gymName != null) {
+                    Text(
+                        text = gymName,
+                        style = TextStyle(
+                            color = ColorProvider(R.color.widget_text_primary),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        maxLines = 1,
+                        modifier = GlanceModifier.defaultWeight()
+                    )
+                } else {
+                    Spacer(modifier = GlanceModifier.defaultWeight())
+                }
+                if (logoBitmap != null) {
+                    Image(
+                        provider = ImageProvider(logoBitmap),
+                        contentDescription = gymName,
+                        contentScale = ContentScale.Fit,
+                        modifier = GlanceModifier.height(44.dp).width(44.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = GlanceModifier.height(4.dp))
+
+            if (isWide && isTall && dayUtilization != null) {
+                // Bottom row: occupancy % on left, chart on right
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                    verticalAlignment = Alignment.Vertical.CenterVertically
+                ) {
+                    Text(
+                        text = occupancyText,
+                        style = TextStyle(
+                            color = ColorProvider(R.color.widget_text_primary),
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+
+                    val chartW = (size.width.value * density).toInt()
+                    val chartH = (size.height.value * density * 0.55f).toInt()
+                    val chartBitmap = createOccupancyChart(dayUtilization, chartW, chartH)
+                    if (chartBitmap != null) {
+                        Image(
+                            provider = ImageProvider(chartBitmap),
+                            contentDescription = "Occupancy chart",
+                            contentScale = ContentScale.FillBounds,
+                            modifier = GlanceModifier.defaultWeight().fillMaxSize()
+                        )
+                    }
+                }
+            } else {
                 Text(
                     text = occupancyText,
                     style = TextStyle(
                         color = ColorProvider(R.color.widget_text_primary),
-                        fontSize = 32.sp,
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.Bold
                     )
                 )
-                Spacer(modifier = GlanceModifier.width(8.dp))
-
-                val chartW = (size.width.value * density).toInt()
-                val chartH = (size.height.value * density * 0.55f).toInt()
-                val chartBitmap = createOccupancyChart(dayUtilization, chartW, chartH)
-                if (chartBitmap != null) {
-                    Image(
-                        provider = ImageProvider(chartBitmap),
-                        contentDescription = "Occupancy chart",
-                        contentScale = ContentScale.FillBounds,
-                        modifier = GlanceModifier.defaultWeight().fillMaxSize()
-                    )
-                }
             }
-        } else {
-            Text(
-                text = occupancyText,
-                style = TextStyle(
-                    color = ColorProvider(R.color.widget_text_primary),
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
         }
     }
 }
