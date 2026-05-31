@@ -2,7 +2,7 @@
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/app_widget_description"
     android:configure="com.example.gymoccupancy.WidgetConfigActivity"
-    android:initialLayout="@layout/gym_occupancy_large"
+    android:initialLayout="@layout/widget_preview"
     android:minWidth="40dp"
     android:minHeight="40dp"
     android:previewImage="@drawable/dumbbell_icon"

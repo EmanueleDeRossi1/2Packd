@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#353535"
+    android:padding="12dp"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="My Gym"
+        android:textColor="#FFFFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="42%"
+        android:textColor="#FFFFFFFF"
+        android:textSize="28sp"
+        android:textStyle="bold" />
+
+    <!-- Bar chart: each slot is a vertical LinearLayout with spacer+bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <!-- bar 15% -->
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="3dp" android:orientation="vertical" android:weightSum="100">
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="85" />
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="15" android:background="#446B6B6B" />
+        </LinearLayout>
+        <!-- bar 22% -->
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="3dp" android:orientation="vertical" android:weightSum="100">
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="78" />
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="22" android:background="#446B6B6B" />
+        </LinearLayout>
+        <!-- bar 30% -->
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="3dp" android:orientation="vertical" android:weightSum="100">
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="70" />
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="30" android:background="#446B6B6B" />
+        </LinearLayout>
+        <!-- bar 45% -->
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="3dp" android:orientation="vertical" android:weightSum="100">
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="55" />
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="45" android:background="#446B6B6B" />
+        </LinearLayout>
+        <!-- bar 60% -->
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="3dp" android:orientation="vertical" android:weightSum="100">
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="40" />
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="60" android:background="#446B6B6B" />
+        </LinearLayout>
+        <!-- bar 75% -->
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="3dp" android:orientation="vertical" android:weightSum="100">
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="25" />
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="75" android:background="#446B6B6B" />
+        </LinearLayout>
+        <!-- bar 42% current — green -->
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="3dp" android:orientation="vertical" android:weightSum="100">
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="58" />
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="42" android:background="#C810B981" />
+        </LinearLayout>
+        <!-- bar 55% -->
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="3dp" android:orientation="vertical" android:weightSum="100">
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="45" />
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="55" android:background="#446B6B6B" />
+        </LinearLayout>
+        <!-- bar 65% -->
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="3dp" android:orientation="vertical" android:weightSum="100">
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="35" />
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="65" android:background="#446B6B6B" />
+        </LinearLayout>
+        <!-- bar 50% -->
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="3dp" android:orientation="vertical" android:weightSum="100">
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="50" />
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="50" android:background="#446B6B6B" />
+        </LinearLayout>
+        <!-- bar 35% -->
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="3dp" android:orientation="vertical" android:weightSum="100">
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="65" />
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="35" android:background="#446B6B6B" />
+        </LinearLayout>
+        <!-- bar 20% -->
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:weightSum="100">
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="80" />
+            <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="20" android:background="#446B6B6B" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Time labels -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="07:00"
+            android:textColor="#FF999999"
+            android:textSize="10sp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="22:00"
+            android:textColor="#FF999999"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+</LinearLayout>
