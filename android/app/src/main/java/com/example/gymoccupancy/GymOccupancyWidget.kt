@@ -212,6 +212,7 @@ private fun WidgetContent(
 
     val occupancyText = when {
         isLoading -> "..."
+        dayUtilization?.isClosed == true -> "Closed"
         dayUtilization != null -> "${dayUtilization.currentOccupancy}%"
         else -> "—"
     }

@@ -100,7 +100,8 @@ data class DayUtilization(
     val currentOccupancy: Int,
     val earliestStartTime: String,
     val latestEndTime: String,
-    val totalSlots: Int
+    val totalSlots: Int,
+    val isClosed: Boolean
 )
 
 // suspend marks this as a coroutine function (can be paused/resumend)
@@ -165,7 +166,8 @@ suspend fun fetchOccupancyData(operatorId: String, gymId: String): DayUtilizatio
                     currentOccupancy = currentOccupancy,
                     earliestStartTime = earliestStartTime,
                     latestEndTime = latestEndTime,
-                    totalSlots = totalSlots
+                    totalSlots = totalSlots,
+                    isClosed = currentStartTime == null
                 )
             }
         } catch (e: Exception) {
