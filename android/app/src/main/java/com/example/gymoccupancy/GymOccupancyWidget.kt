@@ -47,8 +47,9 @@ import androidx.glance.unit.ColorProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.transformLatest
 
 private val AppWidgetIdKey = ActionParameters.Key<Int>("appWidgetId")
 
@@ -231,7 +232,7 @@ private fun WidgetContent(
                     text = gymName,
                     style = TextStyle(
                         color = ColorProvider(R.color.widget_text_primary),
-                        fontSize = 14.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     ),
                     maxLines = 1,
