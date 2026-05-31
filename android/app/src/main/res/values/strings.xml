@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Gym Occupancy</string>
+    <string name="app_name">2Packd</string>
     <string name="add_widget">Add widget</string>
     <string name="app_widget_description">Shows current gym occupancy</string>
 </resources>

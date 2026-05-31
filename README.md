@@ -1,17 +1,19 @@
-# Gym Occupancy Widget
+# 2Packd
 
-An Android home-screen widget that displays real-time gym occupancy and daily utilization charts.
+You wanted to get 6 packs. But the gym is, unfortunately, 2 packd.
 
-It currently supports 784 total gyms from the following gym chains: 
+**2Packd** is an Android home-screen widget that displays how busy your gym is in real-time, so you now have yet another reason to skip it.
 
+It currently supports 786 total gyms from the following gym chains: 
+
+* All Inclusive Fitness
+* FitX
+* Fitness First
+* Gold's Gym
 * John Reed
 * McFit
-* FitX
-* Gold's Gym
-* Fitness First
-* All Inclusive Fitness
 
-If you have any suggestions, feedback, or additional gyms you would like to add, reach out at [emanuelederossi313@gmail.com](mailto:myemail@gmail.com)!
+If you have any suggestions, feedback, or additional gyms you would like to add, reach out at [emanuelederossi313@gmail.com](mailto:myemail@gmail.com)! Feel also free to open a PR for any suggestions/bugs.
 
 <p align="center">
   <img src="docs/widget-screenshot.jpeg" width="350">
