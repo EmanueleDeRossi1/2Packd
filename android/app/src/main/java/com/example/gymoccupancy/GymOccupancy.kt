@@ -2,12 +2,14 @@ package com.example.gymoccupancy
 
 import androidx.core.content.edit
 import android.content.Context
+import android.graphics.BitmapFactory
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
+import java.io.File
 
 private val httpClient = OkHttpClient()
 
@@ -61,6 +63,48 @@ fun deleteGymName(context: Context, appWidgetId: Int) {
     val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
     prefs.edit {remove("gym_name_$appWidgetId")}
 }
+
+fun saveLogoUrl(context: Context, appWidgetId: Int, logoUrl: String?) {
+    val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
+    prefs.edit {
+        if (logoUrl != null) putString("logo_url_$appWidgetId", logoUrl)
+        else remove("logo_url_$appWidgetId")
+    }
+}
+
+fun getLogoUrl(context: Context, appWidgetId: Int): String? {
+    val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
+    return prefs.getString("logo_url_$appWidgetId", null)
+}
+
+fun deleteLogoUrl(context: Context, appWidgetId: Int) {
+    val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
+    prefs.edit { remove("logo_url_$appWidgetId") }
+    logoFileForWidget(context, appWidgetId).delete()
+}
+
+fun logoFileForWidget(context: Context, appWidgetId: Int): File =
+    File(context.filesDir, "logo_$appWidgetId.png")
+
+suspend fun fetchAndCacheLogo(context: Context, appWidgetId: Int): File? =
+    withContext(Dispatchers.IO) {
+        val logoUrl = getLogoUrl(context, appWidgetId) ?: return@withContext null
+        val file = logoFileForWidget(context, appWidgetId)
+        try {
+            val request = Request.Builder().url(logoUrl).get().build()
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext null
+                val bytes = response.body?.bytes() ?: return@withContext null
+                // Validate it's a real image before writing
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@withContext null
+                file.writeBytes(bytes)
+                file
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("GymWidget", "fetchAndCacheLogo error: ${e.message}")
+            null
+        }
+    }
 
 data class UtilizationSlot(
     val startTime: String,

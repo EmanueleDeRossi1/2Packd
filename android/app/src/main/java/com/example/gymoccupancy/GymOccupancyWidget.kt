@@ -144,8 +144,14 @@ class GymOccupancyWidget : GlanceAppWidget() {
 
         // Glance sessions persist in memory — provideGlance only runs once per session lifetime.
         // We use a Flow so the composition can react to config changes without provideGlance re-running.
-        val dataFlow: Flow<Pair<String?, DayUtilization?>> = configUpdates
-            .onStart { emit(appWidgetId) }  // trigger initial fetch immediately
+        data class WidgetState(
+            val gymName: String?,
+            val dayUtilization: DayUtilization?,
+            val logoFile: java.io.File?
+        )
+
+        val dataFlow: Flow<WidgetState> = configUpdates
+            .onStart { emit(appWidgetId) }
             .filter { it == appWidgetId }
             .mapLatest {
                 val gymId = getGymId(context, appWidgetId)
@@ -157,20 +163,24 @@ class GymOccupancyWidget : GlanceAppWidget() {
                         android.util.Log.d("GymWidget", "fetchOccupancyData result: $it")
                     }
                 } else null
-                Pair(gymName, data)
+
+                val cachedLogo = logoFileForWidget(context, appWidgetId)
+                val logoFile = if (cachedLogo.exists()) cachedLogo
+                               else fetchAndCacheLogo(context, appWidgetId)
+
+                WidgetState(gymName, data, logoFile)
             }
 
         provideContent {
-            val state by dataFlow.collectAsState(initial = Pair(null, null))
-            val (gymName, dayUtilization) = state
-            WidgetContent(gymName, dayUtilization)
+            val state by dataFlow.collectAsState(initial = WidgetState(null, null, null))
+            WidgetContent(state.gymName, state.dayUtilization, state.logoFile)
         }
     }
 }
 
 @SuppressLint("RestrictedApi")
 @Composable
-private fun WidgetContent(gymName: String?, dayUtilization: DayUtilization?) {
+private fun WidgetContent(gymName: String?, dayUtilization: DayUtilization?, logoFile: java.io.File?) {
     val size = LocalSize.current
     val context = LocalContext.current
     val density = context.resources.displayMetrics.density
@@ -178,6 +188,10 @@ private fun WidgetContent(gymName: String?, dayUtilization: DayUtilization?) {
     val occupancyText = if (dayUtilization != null) "${dayUtilization.currentOccupancy}%" else "—"
     val isWide = size.width > size.height * 1.5f
     val isTall = size.height > 100.dp
+
+    val logoBitmap = if (logoFile != null && logoFile.exists()) {
+        android.graphics.BitmapFactory.decodeFile(logoFile.absolutePath)
+    } else null
 
     Column(
         modifier = GlanceModifier
@@ -190,7 +204,16 @@ private fun WidgetContent(gymName: String?, dayUtilization: DayUtilization?) {
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
-            if (isWide && gymName != null) {
+            if (logoBitmap != null) {
+                Image(
+                    provider = ImageProvider(logoBitmap),
+                    contentDescription = gymName,
+                    contentScale = ContentScale.Fit,
+                    modifier = GlanceModifier
+                        .height(28.dp)
+                        .defaultWeight()
+                )
+            } else if (isWide && gymName != null) {
                 Text(
                     text = gymName,
                     style = TextStyle(

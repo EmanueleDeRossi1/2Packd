@@ -23,9 +23,9 @@ data class Gym(
     val operatorId: String,
     val id: String,
     val city: String,
-    val gymName: String
+    val gymName: String,
+    val logoUrl: String?
 ) {
-    // Display format: "CITY gymName"
     val displayName: String
         get() = "${city.uppercase()} $gymName"
 }
@@ -66,9 +66,10 @@ suspend fun fetchGyms(): List<Gym> =
                     val gymId = gymJson.optString("gymId", "")
                     val gymName = gymJson.optString("gymName", "")
                     val city = gymJson.optString("city", "") ?: ""
+                    val logoUrl = gymJson.optString("logoUrl", "").ifEmpty { null }
 
                     if (gymId.isNotEmpty() && gymName.isNotEmpty() && city.isNotEmpty() && operatorId.isNotEmpty()) {
-                        gyms.add(Gym(operatorId, gymId, city, gymName))
+                        gyms.add(Gym(operatorId, gymId, city, gymName, logoUrl))
                     }
                 }
                 // return ordered list of gyms
@@ -138,6 +139,9 @@ class WidgetConfigActivity : Activity() {
                     saveGymId(this@WidgetConfigActivity, appWidgetId, selectedGymId)
                     saveOperatorId(this@WidgetConfigActivity, appWidgetId, gyms[position].operatorId)
                     saveGymName(this@WidgetConfigActivity, appWidgetId, gyms[position].gymName)
+                    // Delete cached logo so the next update re-downloads for the new brand
+                    logoFileForWidget(this@WidgetConfigActivity, appWidgetId).delete()
+                    saveLogoUrl(this@WidgetConfigActivity, appWidgetId, gyms[position].logoUrl)
 
                     val resultValue = Intent().apply {
                         putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
