@@ -92,15 +92,15 @@ fun createOccupancyChart(
 
     canvas.drawColor(Color.parseColor("#353535"))
 
-    val labelHeight = 24f
+    val labelHeight = 34f
     val chartHeight = height - labelHeight
     val barSpacing = 6f
     val barWidth = (width.toFloat() / dayUtilization.totalSlots) - barSpacing
     val minBarHeight = 4f
     val cornerRadius = 3f
 
-    for (slot in dayUtilization.slots) {
-        val left = slot.index * (barWidth + barSpacing)
+    for ((i, slot) in dayUtilization.slots.withIndex()) {
+        val left = i * (barWidth + barSpacing)
         val right = left + barWidth
         val barHeight = maxOf((slot.occupancy * chartHeight / 100).toFloat(), minBarHeight)
         val top = chartHeight - barHeight
@@ -127,7 +127,7 @@ fun createOccupancyChart(
 
     val timeLabelPaint = Paint().apply {
         color = Color.parseColor("#999999")
-        textSize = 22f
+        textSize = 30f
         isAntiAlias = true
         typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL)
         flags = Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG or Paint.LINEAR_TEXT_FLAG
@@ -274,9 +274,9 @@ private fun WidgetContent(
                         fontWeight = FontWeight.Bold
                     )
                 )
-                Spacer(modifier = GlanceModifier.height(1.dp).defaultWeight())
+                Spacer(modifier = GlanceModifier.width(8.dp))
 
-                val chartW = (size.width.value * density * 0.72f).toInt()
+                val chartW = (size.width.value * density).toInt()
                 val chartH = (size.height.value * density * 0.55f).toInt()
                 val chartBitmap = createOccupancyChart(dayUtilization, chartW, chartH)
                 if (chartBitmap != null) {
@@ -284,7 +284,7 @@ private fun WidgetContent(
                         provider = ImageProvider(chartBitmap),
                         contentDescription = "Occupancy chart",
                         contentScale = ContentScale.FillBounds,
-                        modifier = GlanceModifier.fillMaxSize()
+                        modifier = GlanceModifier.defaultWeight().fillMaxSize()
                     )
                 }
             }
