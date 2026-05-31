@@ -33,6 +33,7 @@ import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
+import androidx.glance.layout.width
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -200,54 +201,74 @@ private fun WidgetContent(gymName: String?, dayUtilization: DayUtilization?, log
             .padding(12.dp),
         verticalAlignment = Alignment.Vertical.Top
     ) {
+        // Top row: gym name on left, logo on right
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
+            if (gymName != null) {
+                Text(
+                    text = gymName,
+                    style = TextStyle(
+                        color = ColorProvider(R.color.widget_text_primary),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    maxLines = 1,
+                    modifier = GlanceModifier.defaultWeight()
+                )
+            } else {
+                Spacer(modifier = GlanceModifier.defaultWeight())
+            }
             if (logoBitmap != null) {
                 Image(
                     provider = ImageProvider(logoBitmap),
                     contentDescription = gymName,
                     contentScale = ContentScale.Fit,
-                    modifier = GlanceModifier
-                        .height(28.dp)
-                        .defaultWeight()
-                )
-            } else if (isWide && gymName != null) {
-                Text(
-                    text = gymName,
-                    style = TextStyle(
-                        color = ColorProvider(R.color.widget_text_secondary),
-                        fontSize = 14.sp
-                    ),
-                    modifier = GlanceModifier.defaultWeight()
+                    modifier = GlanceModifier.height(44.dp).width(44.dp)
                 )
             }
+        }
+
+        Spacer(modifier = GlanceModifier.height(4.dp))
+
+        if (isWide && isTall && dayUtilization != null) {
+            // Bottom row: occupancy % on left, chart on right
+            Row(
+                modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                verticalAlignment = Alignment.Vertical.CenterVertically
+            ) {
+                Text(
+                    text = occupancyText,
+                    style = TextStyle(
+                        color = ColorProvider(R.color.widget_text_primary),
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+                Spacer(modifier = GlanceModifier.height(1.dp).defaultWeight())
+
+                val chartW = (size.width.value * density * 0.72f).toInt()
+                val chartH = (size.height.value * density * 0.55f).toInt()
+                val chartBitmap = createOccupancyChart(dayUtilization, chartW, chartH)
+                if (chartBitmap != null) {
+                    Image(
+                        provider = ImageProvider(chartBitmap),
+                        contentDescription = "Occupancy chart",
+                        contentScale = ContentScale.FillBounds,
+                        modifier = GlanceModifier.fillMaxSize()
+                    )
+                }
+            }
+        } else {
             Text(
                 text = occupancyText,
                 style = TextStyle(
                     color = ColorProvider(R.color.widget_text_primary),
-                    fontSize = if (isWide) 28.sp else 32.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Bold
                 )
             )
-        }
-
-        if (isWide && isTall && dayUtilization != null) {
-            Spacer(modifier = GlanceModifier.height(8.dp))
-
-            val bitmapW = (size.width.value * density).toInt()
-            val bitmapH = (size.height.value * density * 0.55f).toInt()
-            val chartBitmap = createOccupancyChart(dayUtilization, bitmapW, bitmapH)
-
-            if (chartBitmap != null) {
-                Image(
-                    provider = ImageProvider(chartBitmap),
-                    contentDescription = "Occupancy chart",
-                    contentScale = ContentScale.FillBounds,
-                    modifier = GlanceModifier.fillMaxWidth().defaultWeight()
-                )
-            }
         }
     }
 }
