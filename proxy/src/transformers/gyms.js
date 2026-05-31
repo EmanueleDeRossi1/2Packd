@@ -65,7 +65,7 @@ const RSG_BRAND_RULES = [
       gymId: gym.attributes.field_magicline_studio_id,
       gymName: `Fitness First ${gym.attributes.title}`,
       city: gym.attributes.field_address.locality,
-      operatorId: 'fitnessfirst',
+      operatorId: 'fitness-first',
       brand,
       logoUrl: BRAND_LOGOS[brand] ?? null,
     }));
