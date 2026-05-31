@@ -1,3 +1,5 @@
+import { BRAND_LOGOS } from '../logos.js';
+
 const RSG_BRAND_RULES = [
     { prefix: 'McFIT',              brand: 'mcfit' },
     { prefix: 'KLUB McFIT',         brand: 'klub-mcfit' },
@@ -27,44 +29,56 @@ const RSG_BRAND_RULES = [
   
   export function transformRSG(rawData) {
     return rawData
-      .map(gym => ({
-        gymId: gym.id,
-        gymName: gym.studioName,
-        city: gym.address.city,
-        operatorId: 'rsg-group',
-        brand: extractBrand(gym.studioName, RSG_BRAND_RULES),
-      }))
+      .map(gym => {
+        const brand = extractBrand(gym.studioName, RSG_BRAND_RULES);
+        return {
+          gymId: gym.id,
+          gymName: gym.studioName,
+          city: gym.address.city,
+          operatorId: 'rsg-group',
+          brand,
+          logoUrl: BRAND_LOGOS[brand] ?? null,
+        };
+      })
       .filter(gym => gym.brand !== null);
   }
-  
+
   export function transformBestFit(rawData) {
     return rawData
-      .map(gym => ({
-        gymId: gym.id,
-        gymName: gym.studioName,
-        city: gym.address.city,
-        operatorId: 'bestfit',
-        brand: extractBrand(gym.studioName, BESTFIT_BRAND_RULES),
-      }))
+      .map(gym => {
+        const brand = extractBrand(gym.studioName, BESTFIT_BRAND_RULES);
+        return {
+          gymId: gym.id,
+          gymName: gym.studioName,
+          city: gym.address.city,
+          operatorId: 'bestfit',
+          brand,
+          logoUrl: BRAND_LOGOS[brand] ?? null,
+        };
+      })
       .filter(gym => gym.brand !== null);
   }
-  
+
   export function transformFitnessFirst(rawData) {
+    const brand = 'fitness-first';
     return rawData.map(gym => ({
       gymId: gym.attributes.field_magicline_studio_id,
       gymName: `Fitness First ${gym.attributes.title}`,
       city: gym.attributes.field_address.locality,
       operatorId: 'fitnessfirst',
-      brand: 'fitness-first',
+      brand,
+      logoUrl: BRAND_LOGOS[brand] ?? null,
     }));
   }
-  
+
   export function transformFitX(rawData) {
+    const brand = 'fitx';
     return rawData.map(gym => ({
       gymId: gym.id,
       gymName: gym.name,
       city: gym.address.city,
       operatorId: 'fitx',
-      brand: 'fitx',
+      brand,
+      logoUrl: BRAND_LOGOS[brand] ?? null,
     }));
   }
