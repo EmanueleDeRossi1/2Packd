@@ -14,10 +14,8 @@ It currently supports 786 total gyms from the following gym chains:
 If you have any suggestions, feedback, or additional gyms you would like to add, reach out at [emanuelederossi313@gmail.com](mailto:myemail@gmail.com)! Feel also free to open a PR for any suggestions/bugs.
 
 <p align="center">
-  <img src="docs/widget-screenshot.jpeg" width="350">
+  <img src="docs/widget-large.jpeg" width="350">
 </p>
-
-**⚠️  Note:** As this is still a work-in-progress, the widget is still not downloadable as an APK file.
 
 
 ## Architecture
