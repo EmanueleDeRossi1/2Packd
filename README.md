@@ -18,6 +18,12 @@ If you have any suggestions, feedback, or additional gyms you would like to add,
 </p>
 
 
+## Download
+
+**Note:** This is an unofficial APK. You'll need to enable "Install unknown apps" in Android settings.
+
+[Download latest APK](https://github.com/EmanueleDeRossi1/gym-occupancy-android-widget/releases/latest)
+
 ## Architecture
 
 The project consists of two components.
