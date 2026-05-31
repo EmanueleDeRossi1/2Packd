@@ -1,32 +1,14 @@
 package com.example.gymoccupancy
 
-import android.app.PendingIntent
 import androidx.core.content.edit
-import android.content.Intent
-import android.graphics.Bitmap
-import android.appwidget.AppWidgetManager
-import android.appwidget.AppWidgetProvider
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.LinearGradient
-import android.graphics.Shader
-import android.graphics.Color
-import android.widget.RemoteViews
-import android.os.Bundle
-import android.util.SizeF
 
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 
-// comments for my own personal understanding
-
-// A reusable HTTP client for making network requests
 private val httpClient = OkHttpClient()
 
 // Functions to save/retrieve gym id and name for each widget
@@ -96,28 +78,6 @@ data class DayUtilization(
     val totalSlots: Int
 )
 
-fun getOccupancyColor(occupancy: Int): Int {
-    return when {
-        occupancy < 40 -> Color.parseColor("#10B981")  // Green
-        occupancy < 50 -> blendColors("#10B981", "#F59E0B", (occupancy - 40) / 10f)  // Green to Orange
-        occupancy < 70 -> Color.parseColor("#F59E0B")  // Orange
-        occupancy < 85 -> blendColors("#F59E0B", "#EF4444", (occupancy - 70) / 15f)  // Orange to Red
-        else -> Color.parseColor("#EF4444")  // Red
-    }
-}
-
-fun blendColors(color1: String, color2: String, ratio: Float): Int {
-    val c1 = Color.parseColor(color1)
-    val c2 = Color.parseColor(color2)
-
-    val r = (Color.red(c1) * (1 - ratio) + Color.red(c2) * ratio).toInt()
-    val g = (Color.green(c1) * (1 - ratio) + Color.green(c2) * ratio).toInt()
-    val b = (Color.blue(c1) * (1 - ratio) + Color.blue(c2) * ratio).toInt()
-
-    return Color.rgb(r, g, b)
-}
-
-
 // suspend marks this as a coroutine function (can be paused/resumend)
 // without blocking the thread
 // = is the "single-expression function" syntax
@@ -184,216 +144,8 @@ suspend fun fetchOccupancyData(operatorId: String, gymId: String): DayUtilizatio
                 )
             }
         } catch (e: Exception) {
+            android.util.Log.e("GymWidget", "fetchOccupancyData error: ${e.javaClass.simpleName}: ${e.message}", e)
             null
         }
     }
 
-// Create a Bitmap to draw the chart on
-private fun createOccupancyChart(
-    context: Context,
-    dayUtilization: DayUtilization,
-    width: Int,
-    height: Int
-): Bitmap? {
-
-    if (width <= 0 || height <= 0 || dayUtilization.totalSlots == 0) {
-        return null
-    }
-
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-
-    // Background
-    canvas.drawColor(Color.parseColor("#353535"))
-
-    val labelHeight = 24f
-    val chartHeight = height - labelHeight
-
-    // Increased spacing between bars
-    val barSpacing = 3f
-    val barWidth = (width.toFloat() / dayUtilization.totalSlots) - barSpacing
-
-    // Minimum bar height for visibility
-    val minBarHeight = 4f
-    val cornerRadius = 3f
-
-    for (slot in dayUtilization.slots) {
-        val left = slot.index * (barWidth + barSpacing)
-        val right = left + barWidth
-
-        val barHeight = maxOf(
-            (slot.occupancy * chartHeight / 100).toFloat(),
-            minBarHeight
-        )
-        val top = chartHeight - barHeight
-
-        val baseColor = if (slot.isCurrent) {
-            getOccupancyColor(slot.occupancy)
-        } else {
-            Color.parseColor("#6B6B6B")
-        }
-
-        // Extract RGB from baseColor to build transparent version
-        val r = Color.red(baseColor)
-        val g = Color.green(baseColor)
-        val b = Color.blue(baseColor)
-
-        val paint = Paint().apply {
-            style = Paint.Style.FILL
-            isAntiAlias = true
-            shader = LinearGradient(
-                0f, top,                          // start: top of bar
-                0f, chartHeight,                  // end: bottom of bar
-                Color.argb(200, r, g, b),         // ~80% opacity at top
-                Color.argb(40, r, g, b),          // ~15% opacity at bottom
-                Shader.TileMode.CLAMP
-            )
-        }
-        // rounded bar (all corners)
-        canvas.drawRoundRect(left, top, right, chartHeight, cornerRadius, cornerRadius, paint)
-    }
-
-    // Draw time labels with higher quality
-    val timeLabelPaint = Paint().apply {
-        color = Color.parseColor("#999999")
-        textSize = 22f  // Increased size
-        isAntiAlias = true
-        typeface = android.graphics.Typeface.create(
-            android.graphics.Typeface.DEFAULT,
-            android.graphics.Typeface.NORMAL
-        )
-        // These flags help with text rendering quality
-        flags = Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG or Paint.LINEAR_TEXT_FLAG
-    }
-
-    val startTimeFormatted = dayUtilization.earliestStartTime.take(5)
-    val endTimeFormatted = dayUtilization.latestEndTime.take(5)
-
-    timeLabelPaint.textAlign = Paint.Align.LEFT
-    canvas.drawText(startTimeFormatted, 4f, height - 4f, timeLabelPaint)
-
-    timeLabelPaint.textAlign = Paint.Align.RIGHT
-    canvas.drawText(endTimeFormatted, width - 4f, height - 4f, timeLabelPaint)
-
-    return bitmap
-}
-
-class GymOccupancy : AppWidgetProvider() {
-    override fun onUpdate(
-        context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetIds: IntArray
-    ) {
-        for (appWidgetId in appWidgetIds) {
-            updateAppWidget(context, appWidgetManager, appWidgetId)
-        }
-    }
-
-    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
-        for (appWidgetId in appWidgetIds) {
-            deleteGymId(context, appWidgetId)
-            deleteGymName(context, appWidgetId)
-            deleteOperatorId(context, appWidgetId)
-        }
-    }
-
-    override fun onEnabled(context: Context) {}
-    override fun onDisabled(context: Context) {}
-
-    override fun onAppWidgetOptionsChanged(
-        context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetId: Int,
-        newOptions: Bundle
-    ) {
-        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
-        updateAppWidget(context, appWidgetManager, appWidgetId)
-    }
-}
-
-internal fun updateAppWidget(
-    context: Context,
-    appWidgetManager: AppWidgetManager,
-    appWidgetId: Int
-) {
-    val gymId = getGymId(context, appWidgetId)
-    val operatorId = getOperatorId(context, appWidgetId)
-
-    if (gymId == null || operatorId == null) {
-        val views = RemoteViews(context.packageName, R.layout.gym_occupancy_large)
-        appWidgetManager.updateAppWidget(appWidgetId, views)
-        return
-    }
-
-    val gymName = getGymName(context, appWidgetId)
-
-    CoroutineScope(Dispatchers.Main).launch {
-        val dayUtilization = fetchOccupancyData(operatorId, gymId)
-
-        val refreshIntent = Intent(context, GymOccupancy::class.java).apply<Intent> {
-            action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
-        }
-        val refreshPendingIntent = PendingIntent.getBroadcast(
-            context,
-            appWidgetId,
-            refreshIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        // helper function that picks the right layout based on actual size
-        // this is called once per size that the launcher reports
-        fun createRemoteViews(size: SizeF): RemoteViews {
-            val occupancyText = if (dayUtilization != null) "${dayUtilization.currentOccupancy}%" else "—"
-
-            return when {
-                // square or near-square → small (only percentage)
-                size.width < size.height * 1.5f -> {
-                    RemoteViews(context.packageName, R.layout.gym_occupancy_small).also {
-                        it.setTextViewText(R.id.current_occupancy, occupancyText)
-                        it.setOnClickPendingIntent(R.id.refresh_button, refreshPendingIntent)
-                    }
-                }
-                // wide but short, OR not wide enough → medium (name + percentage, no chart)
-                size.height < 100f || size.width < 200f -> {
-                    RemoteViews(context.packageName, R.layout.gym_occupancy_medium).also {
-                        it.setTextViewText(R.id.current_occupancy, occupancyText)
-                        it.setTextViewText(R.id.gym_name_text, gymName)
-                        it.setOnClickPendingIntent(R.id.refresh_button, refreshPendingIntent)
-                    }
-                }
-                // wide and tall → large (name + percentage + chart)
-                else -> {
-                    RemoteViews(context.packageName, R.layout.gym_occupancy_large).also {
-                        it.setTextViewText(R.id.current_occupancy, occupancyText)
-                        it.setTextViewText(R.id.gym_name_text, gymName)
-                        it.setOnClickPendingIntent(R.id.refresh_button, refreshPendingIntent)
-                        if (dayUtilization != null) {
-                            val bitmap = createOccupancyChart(context, dayUtilization, 800, 200)
-                            if (bitmap != null) {
-                                it.setImageViewBitmap(R.id.occupancy_chart, bitmap)
-                            } else {
-                                it.setViewVisibility(R.id.occupancy_chart, android.view.View.GONE)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // get the exact sizes the launcher is using for this widget on this device
-        val sizes = appWidgetManager
-            .getAppWidgetOptions(appWidgetId)
-            .getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
-
-        val remoteViews = if (sizes.isNullOrEmpty()) {
-            // launcher doesn't support OPTION_APPWIDGET_SIZES, fall back to large
-            createRemoteViews(SizeF(300f, 200f))
-        } else {
-            // let Android pick the right layout for each reported size
-            RemoteViews(sizes.associateWith(::createRemoteViews))
-        }
-
-        appWidgetManager.updateAppWidget(appWidgetId, remoteViews)
-    }
-}

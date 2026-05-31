@@ -1,0 +1,234 @@
+package com.example.gymoccupancy
+
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.LinearGradient
+import android.graphics.Shader
+import android.graphics.Color
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.glance.GlanceId
+import androidx.glance.GlanceModifier
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.Image
+import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
+import androidx.glance.LocalSize
+import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.provideContent
+import androidx.glance.background
+import androidx.glance.layout.Alignment
+import androidx.glance.layout.Column
+import androidx.glance.layout.ContentScale
+import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
+import androidx.glance.layout.padding
+import androidx.glance.text.FontWeight
+import androidx.glance.text.Text
+import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onStart
+
+
+fun getOccupancyColor(occupancy: Int): Int {
+    return when {
+        occupancy < 40 -> Color.parseColor("#10B981")
+        occupancy < 50 -> blendColors("#10B981", "#F59E0B", (occupancy - 40) / 10f)
+        occupancy < 70 -> Color.parseColor("#F59E0B")
+        occupancy < 85 -> blendColors("#F59E0B", "#EF4444", (occupancy - 70) / 15f)
+        else -> Color.parseColor("#EF4444")
+    }
+}
+
+fun blendColors(color1: String, color2: String, ratio: Float): Int {
+    val c1 = Color.parseColor(color1)
+    val c2 = Color.parseColor(color2)
+    val r = (Color.red(c1) * (1 - ratio) + Color.red(c2) * ratio).toInt()
+    val g = (Color.green(c1) * (1 - ratio) + Color.green(c2) * ratio).toInt()
+    val b = (Color.blue(c1) * (1 - ratio) + Color.blue(c2) * ratio).toInt()
+    return Color.rgb(r, g, b)
+}
+
+fun createOccupancyChart(
+    dayUtilization: DayUtilization,
+    width: Int,
+    height: Int
+): Bitmap? {
+    if (width <= 0 || height <= 0 || dayUtilization.totalSlots == 0) return null
+
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    canvas.drawColor(Color.parseColor("#353535"))
+
+    val labelHeight = 24f
+    val chartHeight = height - labelHeight
+    val barSpacing = 3f
+    val barWidth = (width.toFloat() / dayUtilization.totalSlots) - barSpacing
+    val minBarHeight = 4f
+    val cornerRadius = 3f
+
+    for (slot in dayUtilization.slots) {
+        val left = slot.index * (barWidth + barSpacing)
+        val right = left + barWidth
+        val barHeight = maxOf((slot.occupancy * chartHeight / 100).toFloat(), minBarHeight)
+        val top = chartHeight - barHeight
+
+        val baseColor = if (slot.isCurrent) getOccupancyColor(slot.occupancy)
+                        else Color.parseColor("#6B6B6B")
+
+        val r = Color.red(baseColor)
+        val g = Color.green(baseColor)
+        val b = Color.blue(baseColor)
+
+        val paint = Paint().apply {
+            style = Paint.Style.FILL
+            isAntiAlias = true
+            shader = LinearGradient(
+                0f, top, 0f, chartHeight,
+                Color.argb(200, r, g, b),
+                Color.argb(40, r, g, b),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRoundRect(left, top, right, chartHeight, cornerRadius, cornerRadius, paint)
+    }
+
+    val timeLabelPaint = Paint().apply {
+        color = Color.parseColor("#999999")
+        textSize = 22f
+        isAntiAlias = true
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL)
+        flags = Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG or Paint.LINEAR_TEXT_FLAG
+    }
+
+    timeLabelPaint.textAlign = Paint.Align.LEFT
+    canvas.drawText(dayUtilization.earliestStartTime.take(5), 4f, height - 4f, timeLabelPaint)
+    timeLabelPaint.textAlign = Paint.Align.RIGHT
+    canvas.drawText(dayUtilization.latestEndTime.take(5), width - 4f, height - 4f, timeLabelPaint)
+
+    return bitmap
+}
+
+class GymOccupancyWidget : GlanceAppWidget() {
+
+    companion object {
+        // Emitting an appWidgetId signals that its config was updated and data should be re-fetched
+        private val configUpdates = MutableSharedFlow<Int>(extraBufferCapacity = 8)
+
+        fun notifyConfigChanged(appWidgetId: Int) {
+            configUpdates.tryEmit(appWidgetId)
+        }
+    }
+
+    override val sizeMode = SizeMode.Exact
+
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        android.util.Log.d("GymWidget", "provideGlance: appWidgetId=$appWidgetId")
+
+        // Glance sessions persist in memory — provideGlance only runs once per session lifetime.
+        // We use a Flow so the composition can react to config changes without provideGlance re-running.
+        val dataFlow: Flow<Pair<String?, DayUtilization?>> = configUpdates
+            .onStart { emit(appWidgetId) }  // trigger initial fetch immediately
+            .filter { it == appWidgetId }
+            .mapLatest {
+                val gymId = getGymId(context, appWidgetId)
+                val operatorId = getOperatorId(context, appWidgetId)
+                val gymName = getGymName(context, appWidgetId)
+                android.util.Log.d("GymWidget", "fetching data: gymId=$gymId operatorId=$operatorId")
+                val data = if (gymId != null && operatorId != null) {
+                    fetchOccupancyData(operatorId, gymId).also {
+                        android.util.Log.d("GymWidget", "fetchOccupancyData result: $it")
+                    }
+                } else null
+                Pair(gymName, data)
+            }
+
+        provideContent {
+            val state by dataFlow.collectAsState(initial = Pair(null, null))
+            val (gymName, dayUtilization) = state
+            WidgetContent(gymName, dayUtilization)
+        }
+    }
+}
+
+@SuppressLint("RestrictedApi")
+@Composable
+private fun WidgetContent(gymName: String?, dayUtilization: DayUtilization?) {
+    val size = LocalSize.current
+    val context = LocalContext.current
+    val density = context.resources.displayMetrics.density
+
+    val occupancyText = if (dayUtilization != null) "${dayUtilization.currentOccupancy}%" else "—"
+    val isWide = size.width > size.height * 1.5f
+    val isTall = size.height > 100.dp
+
+    Column(
+        modifier = GlanceModifier
+            .fillMaxSize()
+            .background(R.color.widget_background)
+            .padding(12.dp),
+        verticalAlignment = Alignment.Vertical.Top
+    ) {
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Vertical.CenterVertically
+        ) {
+            if (isWide && gymName != null) {
+                Text(
+                    text = gymName,
+                    style = TextStyle(
+                        color = ColorProvider(R.color.widget_text_secondary),
+                        fontSize = 14.sp
+                    ),
+                    modifier = GlanceModifier.defaultWeight()
+                )
+            }
+            Text(
+                text = occupancyText,
+                style = TextStyle(
+                    color = ColorProvider(R.color.widget_text_primary),
+                    fontSize = if (isWide) 28.sp else 32.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+        }
+
+        if (isWide && isTall && dayUtilization != null) {
+            Spacer(modifier = GlanceModifier.height(8.dp))
+
+            val bitmapW = (size.width.value * density).toInt()
+            val bitmapH = (size.height.value * density * 0.55f).toInt()
+            val chartBitmap = createOccupancyChart(dayUtilization, bitmapW, bitmapH)
+
+            if (chartBitmap != null) {
+                Image(
+                    provider = ImageProvider(chartBitmap),
+                    contentDescription = "Occupancy chart",
+                    contentScale = ContentScale.FillBounds,
+                    modifier = GlanceModifier.fillMaxWidth().defaultWeight()
+                )
+            }
+        }
+    }
+}
+
+class GymOccupancyReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = GymOccupancyWidget()
+}

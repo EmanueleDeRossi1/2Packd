@@ -8,12 +8,12 @@ import kotlinx.coroutines.withContext
 import android.widget.Toast
 import android.app.Activity
 import android.appwidget.AppWidgetManager
+import android.content.Intent
 import android.os.Bundle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import android.widget.ListView
 import android.widget.ArrayAdapter
-import android.content.Intent
 import org.json.JSONObject
 
 
@@ -133,29 +133,17 @@ class WidgetConfigActivity : Activity() {
                 gymListView.setOnItemClickListener { _, _, position, _ ->
                     val selectedGymId = gyms[position].id
 
+                    android.util.Log.d("GymWidget", "Config: saving appWidgetId=$appWidgetId gymId=$selectedGymId operatorId=${gyms[position].operatorId}")
+
                     saveGymId(this@WidgetConfigActivity, appWidgetId, selectedGymId)
                     saveOperatorId(this@WidgetConfigActivity, appWidgetId, gyms[position].operatorId)
                     saveGymName(this@WidgetConfigActivity, appWidgetId, gyms[position].gymName)
 
-                    // Create an empty itent object
-                    // This will then be populated with the AppWidgetId
-                    // EXTRA is just a convention: it indicates it is a key for IntentputExtra()
-                    val resultValue = Intent()
-                    resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-
-                    // just as before (RESULT_CANCELLED), but now successful
+                    val resultValue = Intent().apply {
+                        putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                    }
                     setResult(RESULT_OK, resultValue)
-
-                    // AppWidgetManager is the system service that manages
-                    // all widget on the device (get infos, update widgets, request updates etc.)
-                    val appWidgetManager = AppWidgetManager.getInstance(
-                        this@WidgetConfigActivity)
-
-                    updateAppWidget(
-                        this@WidgetConfigActivity,
-                        appWidgetManager,
-                        appWidgetId
-                    )
+                    GymOccupancyWidget.notifyConfigChanged(appWidgetId)
                     finish()
                 }
 

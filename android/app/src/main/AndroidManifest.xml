@@ -13,7 +13,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GymOccupancy">
         <receiver
-            android:name=".GymOccupancy"
+            android:name=".GymOccupancyReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
