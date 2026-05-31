@@ -14,7 +14,7 @@ import {
 } from './transformers/occupancy.js';
 
 const LIST_TRANSFORMERS = {
-  'fitnessfirst': transformFitnessFirst,
+  'fitness-first': transformFitnessFirst,
   'fitx': transformFitX,
   'rsg-group': transformRSG,
   'bestfit': transformBestFit
@@ -22,7 +22,7 @@ const LIST_TRANSFORMERS = {
 
 
 const OCCUPANCY_TRANSFORMERS = {
-  'fitnessfirst': transformFitnessFirstOccupancy,
+  'fitness-first': transformFitnessFirstOccupancy,
   'fitx': transformFitXOccupancy,
   'rsg-group': transformRSGOccupancy,
   'bestfit': transformBestFitOccupancy
@@ -97,7 +97,7 @@ async function fetchAllGyms(env) {
     try {
         let gyms;
 
-        if (operator.id === 'fitnessfirst') {
+        if (operator.id === 'fitness-first') {
           gyms = await fetchFitnessFirstGyms(operator);
         } else {
           gyms = await fetchOperatorGyms(operator);

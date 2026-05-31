@@ -1,6 +1,6 @@
 export const OPERATORS = [
     {
-      id: 'fitnessfirst',
+      id: 'fitness-first',
       name: 'Fitness First',
       gymListUrl: 'https://www.fitnessfirst.de/api/v1/node/club_page',
       occupancyUrl: 'https://www.fitnessfirst.de/club/api/checkins/{gymId}',

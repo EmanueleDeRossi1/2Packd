@@ -27,6 +27,11 @@ const RSG_BRAND_RULES = [
     return match ? match.brand : 'unknown';
   }
   
+  function extractLocation(studioName, rules) {
+    const match = rules.find(r => studioName.startsWith(r.prefix));
+    return match ? studioName.slice(match.prefix.length).trim() : studioName;
+  }
+
   export function transformRSG(rawData) {
     return rawData
       .map(gym => {
@@ -34,6 +39,7 @@ const RSG_BRAND_RULES = [
         return {
           gymId: gym.id,
           gymName: gym.studioName,
+          location: extractLocation(gym.studioName, RSG_BRAND_RULES),
           city: gym.address.city,
           operatorId: 'rsg-group',
           brand,
@@ -50,6 +56,7 @@ const RSG_BRAND_RULES = [
         return {
           gymId: gym.id,
           gymName: gym.studioName,
+          location: extractLocation(gym.studioName, BESTFIT_BRAND_RULES),
           city: gym.address.city,
           operatorId: 'bestfit',
           brand,
@@ -64,6 +71,7 @@ const RSG_BRAND_RULES = [
     return rawData.map(gym => ({
       gymId: gym.attributes.field_magicline_studio_id,
       gymName: `Fitness First ${gym.attributes.title}`,
+      location: gym.attributes.title,
       city: gym.attributes.field_address.locality,
       operatorId: 'fitness-first',
       brand,
@@ -76,6 +84,7 @@ const RSG_BRAND_RULES = [
     return rawData.map(gym => ({
       gymId: gym.id,
       gymName: gym.name,
+      location: gym.name.replace(/^FitX\s+/i, ''),
       city: gym.address.city,
       operatorId: 'fitx',
       brand,
