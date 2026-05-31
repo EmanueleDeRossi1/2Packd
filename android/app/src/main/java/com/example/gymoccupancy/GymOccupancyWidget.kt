@@ -15,6 +15,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
+import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.Image
 import androidx.glance.ImageProvider
@@ -23,6 +26,8 @@ import androidx.glance.LocalSize
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -44,6 +49,15 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
+
+private val AppWidgetIdKey = ActionParameters.Key<Int>("appWidgetId")
+
+class RefreshAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        val appWidgetId = parameters[AppWidgetIdKey] ?: return
+        GymOccupancyWidget.notifyConfigChanged(appWidgetId)
+    }
+}
 
 
 fun getOccupancyColor(occupancy: Int): Int {
@@ -174,14 +188,19 @@ class GymOccupancyWidget : GlanceAppWidget() {
 
         provideContent {
             val state by dataFlow.collectAsState(initial = WidgetState(null, null, null))
-            WidgetContent(state.gymName, state.dayUtilization, state.logoFile)
+            WidgetContent(appWidgetId, state.gymName, state.dayUtilization, state.logoFile)
         }
     }
 }
 
 @SuppressLint("RestrictedApi")
 @Composable
-private fun WidgetContent(gymName: String?, dayUtilization: DayUtilization?, logoFile: java.io.File?) {
+private fun WidgetContent(
+    appWidgetId: Int,
+    gymName: String?,
+    dayUtilization: DayUtilization?,
+    logoFile: java.io.File?
+) {
     val size = LocalSize.current
     val context = LocalContext.current
     val density = context.resources.displayMetrics.density
@@ -198,10 +217,11 @@ private fun WidgetContent(gymName: String?, dayUtilization: DayUtilization?, log
         modifier = GlanceModifier
             .fillMaxSize()
             .background(R.color.widget_background)
-            .padding(12.dp),
+            .padding(12.dp)
+            .clickable(actionRunCallback<RefreshAction>(actionParametersOf(AppWidgetIdKey to appWidgetId))),
         verticalAlignment = Alignment.Vertical.Top
     ) {
-        // Top row: gym name on left, logo on right
+        // Top row: gym name on left, loading indicator (if active), logo on right
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.Vertical.CenterVertically
