@@ -1,13 +1,14 @@
 package com.example.gymoccupancy
 
 import android.annotation.SuppressLint
-import android.graphics.Bitmap
 import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.LinearGradient
-import android.graphics.Shader
 import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -15,19 +16,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionParametersOf
-import androidx.glance.action.clickable
-import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
+import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -38,8 +40,8 @@ import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
-import androidx.glance.layout.width
 import androidx.glance.layout.padding
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
@@ -71,7 +73,6 @@ class RefreshAction : ActionCallback {
     }
 }
 
-
 fun getOccupancyColor(occupancy: Int): Int {
     return when {
         occupancy < 40 -> Color.parseColor("#10B981")
@@ -91,20 +92,13 @@ fun blendColors(color1: String, color2: String, ratio: Float): Int {
     return Color.rgb(r, g, b)
 }
 
-fun createOccupancyChart(
-    dayUtilization: DayUtilization,
-    width: Int,
-    height: Int
-): Bitmap? {
+fun createOccupancyChart(dayUtilization: DayUtilization, width: Int, height: Int): Bitmap? {
     if (width <= 0 || height <= 0 || dayUtilization.totalSlots == 0) return null
 
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
-
     canvas.drawColor(Color.parseColor("#353535"))
 
-    val labelHeight = 34f
-    val chartHeight = height - labelHeight
     val barSpacing = 6f
     val barWidth = (width.toFloat() / dayUtilization.totalSlots) - barSpacing
     val minBarHeight = 4f
@@ -113,8 +107,8 @@ fun createOccupancyChart(
     for ((i, slot) in dayUtilization.slots.withIndex()) {
         val left = i * (barWidth + barSpacing)
         val right = left + barWidth
-        val barHeight = maxOf((slot.occupancy * chartHeight / 100).toFloat(), minBarHeight)
-        val top = chartHeight - barHeight
+        val barHeight = maxOf((slot.occupancy * height / 100).toFloat(), minBarHeight)
+        val top = height - barHeight
 
         val baseColor = if (slot.isCurrent) getOccupancyColor(slot.occupancy)
                         else Color.parseColor("#6B6B6B")
@@ -127,27 +121,14 @@ fun createOccupancyChart(
             style = Paint.Style.FILL
             isAntiAlias = true
             shader = LinearGradient(
-                0f, top, 0f, chartHeight,
+                0f, top, 0f, height.toFloat(),
                 Color.argb(200, r, g, b),
                 Color.argb(40, r, g, b),
                 Shader.TileMode.CLAMP
             )
         }
-        canvas.drawRoundRect(left, top, right, chartHeight, cornerRadius, cornerRadius, paint)
+        canvas.drawRoundRect(left, top, right, height.toFloat(), cornerRadius, cornerRadius, paint)
     }
-
-    val timeLabelPaint = Paint().apply {
-        color = Color.parseColor("#999999")
-        textSize = 30f
-        isAntiAlias = true
-        typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL)
-        flags = Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG or Paint.LINEAR_TEXT_FLAG
-    }
-
-    timeLabelPaint.textAlign = Paint.Align.LEFT
-    canvas.drawText(dayUtilization.earliestStartTime.take(5), 4f, height - 4f, timeLabelPaint)
-    timeLabelPaint.textAlign = Paint.Align.RIGHT
-    canvas.drawText(dayUtilization.latestEndTime.take(5), width - 4f, height - 4f, timeLabelPaint)
 
     return bitmap
 }
@@ -155,7 +136,6 @@ fun createOccupancyChart(
 class GymOccupancyWidget : GlanceAppWidget() {
 
     companion object {
-        // Emitting an appWidgetId signals that its config was updated and data should be re-fetched
         private val configUpdates = MutableSharedFlow<Int>(extraBufferCapacity = 8)
 
         fun notifyConfigChanged(appWidgetId: Int) {
@@ -169,13 +149,12 @@ class GymOccupancyWidget : GlanceAppWidget() {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
         android.util.Log.d("GymWidget", "provideGlance: appWidgetId=$appWidgetId")
 
-        // Glance sessions persist in memory — provideGlance only runs once per session lifetime.
-        // We use a Flow so the composition can react to config changes without provideGlance re-running.
         data class WidgetState(
             val gymName: String?,
             val dayUtilization: DayUtilization?,
             val logoFile: java.io.File?,
-            val isLoading: Boolean = false
+            val isLoading: Boolean = false,
+            val lastUpdated: String? = null
         )
 
         val dataFlow: Flow<WidgetState> = configUpdates
@@ -198,12 +177,13 @@ class GymOccupancyWidget : GlanceAppWidget() {
                 } else null
 
                 val freshLogo = if (logoFile == null) fetchAndCacheLogo(context, appWidgetId) else logoFile
-                emit(WidgetState(gymName, data, freshLogo, isLoading = false))
+                val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                emit(WidgetState(gymName, data, freshLogo, isLoading = false, lastUpdated = time))
             }
 
         provideContent {
             val state by dataFlow.collectAsState(initial = WidgetState(null, null, null))
-            WidgetContent(appWidgetId, state.gymName, state.dayUtilization, state.logoFile, state.isLoading)
+            WidgetContent(appWidgetId, state.gymName, state.dayUtilization, state.logoFile, state.isLoading, state.lastUpdated)
         }
     }
 }
@@ -215,7 +195,8 @@ private fun WidgetContent(
     gymName: String?,
     dayUtilization: DayUtilization?,
     logoFile: java.io.File?,
-    isLoading: Boolean = false
+    isLoading: Boolean = false,
+    lastUpdated: String? = null
 ) {
     val size = LocalSize.current
     val context = LocalContext.current
@@ -234,39 +215,45 @@ private fun WidgetContent(
         android.graphics.BitmapFactory.decodeFile(logoFile.absolutePath)
     } else null
 
+    val configIntent = Intent(context, WidgetConfigActivity::class.java).apply {
+        putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    }
+    val refreshAction = actionRunCallback<RefreshAction>(actionParametersOf(AppWidgetIdKey to appWidgetId))
+    val configAction = actionStartActivity(configIntent)
+    val lastUpdatedText = if (lastUpdated != null) "↻ $lastUpdated" else "↻"
+
     if (isWide && !isTall) {
-        // 1x4 single-row layout: percentage | gym name | logo
+        // 1x4 single-row layout
         Row(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(R.color.widget_background)
                 .padding(horizontal = 12.dp, vertical = 6.dp)
-                .clickable(actionRunCallback<RefreshAction>(actionParametersOf(AppWidgetIdKey to appWidgetId))),
+                .clickable(configAction),
             verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
             Text(
                 text = occupancyText,
-                style = TextStyle(
-                    color = ColorProvider(R.color.widget_text_primary),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 24.sp, fontWeight = FontWeight.Bold)
             )
             Spacer(modifier = GlanceModifier.width(12.dp))
             if (gymName != null) {
                 Text(
                     text = gymName,
-                    style = TextStyle(
-                        color = ColorProvider(R.color.widget_text_primary),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Normal
-                    ),
+                    style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 16.sp),
                     maxLines = 1,
                     modifier = GlanceModifier.defaultWeight()
                 )
             } else {
                 Spacer(modifier = GlanceModifier.defaultWeight())
             }
+            Spacer(modifier = GlanceModifier.width(8.dp))
+            Text(
+                text = lastUpdatedText,
+                style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 11.sp),
+                modifier = GlanceModifier.clickable(refreshAction)
+            )
             if (logoBitmap != null) {
                 Spacer(modifier = GlanceModifier.width(8.dp))
                 Image(
@@ -283,10 +270,10 @@ private fun WidgetContent(
                 .fillMaxSize()
                 .background(R.color.widget_background)
                 .padding(12.dp)
-                .clickable(actionRunCallback<RefreshAction>(actionParametersOf(AppWidgetIdKey to appWidgetId))),
+                .clickable(configAction),
             verticalAlignment = Alignment.Vertical.Top
         ) {
-            // Top row: gym name on left, logo on right
+            // Top row: gym name | logo
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Vertical.CenterVertically
@@ -294,11 +281,7 @@ private fun WidgetContent(
                 if (gymName != null) {
                     Text(
                         text = gymName,
-                        style = TextStyle(
-                            color = ColorProvider(R.color.widget_text_primary),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
+                        style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 18.sp, fontWeight = FontWeight.Bold),
                         maxLines = 1,
                         modifier = GlanceModifier.defaultWeight()
                     )
@@ -318,41 +301,66 @@ private fun WidgetContent(
             Spacer(modifier = GlanceModifier.height(4.dp))
 
             if (isWide && isTall && dayUtilization != null) {
-                // Bottom row: occupancy % on left, chart on right
                 Row(
                     modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
                     verticalAlignment = Alignment.Vertical.CenterVertically
                 ) {
-                    Text(
-                        text = occupancyText,
-                        style = TextStyle(
-                            color = ColorProvider(R.color.widget_text_primary),
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold
+                    // Left: % stacked above ↻ time
+                    Column(verticalAlignment = Alignment.Vertical.CenterVertically) {
+                        Text(
+                            text = occupancyText,
+                            style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 32.sp, fontWeight = FontWeight.Bold)
                         )
-                    )
-                    Spacer(modifier = GlanceModifier.width(8.dp))
+                        Spacer(modifier = GlanceModifier.height(16.dp))
+                        Text(
+                            text = lastUpdatedText,
+                            style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 14.sp),
+                            modifier = GlanceModifier.clickable(refreshAction)
+                        )
+                    }
 
-                    val chartW = (size.width.value * density).toInt()
-                    val chartH = (size.height.value * density * 0.55f).toInt()
-                    val chartBitmap = createOccupancyChart(dayUtilization, chartW, chartH)
-                    if (chartBitmap != null) {
-                        Image(
-                            provider = ImageProvider(chartBitmap),
-                            contentDescription = "Occupancy chart",
-                            contentScale = ContentScale.FillBounds,
-                            modifier = GlanceModifier.defaultWeight().fillMaxSize()
-                        )
+                    Spacer(modifier = GlanceModifier.width(12.dp))
+
+                    // Right: chart above 07:00 / 22:00
+                    Column(modifier = GlanceModifier.defaultWeight().fillMaxSize()) {
+                        val chartW = (size.width.value * density * 0.65f).toInt()
+                        val chartH = (size.height.value * density * 0.55f).toInt()
+                        val chartBitmap = createOccupancyChart(dayUtilization, chartW, chartH)
+                        if (chartBitmap != null) {
+                            Image(
+                                provider = ImageProvider(chartBitmap),
+                                contentDescription = "Occupancy chart",
+                                contentScale = ContentScale.FillBounds,
+                                modifier = GlanceModifier.fillMaxWidth().defaultWeight()
+                            )
+                        }
+                        Row(modifier = GlanceModifier.fillMaxWidth()) {
+                            Text(
+                                text = dayUtilization.earliestStartTime.take(5),
+                                style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 11.sp)
+                            )
+                            Spacer(modifier = GlanceModifier.defaultWeight())
+                            Text(
+                                text = dayUtilization.latestEndTime.take(5),
+                                style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 11.sp)
+                            )
+                        }
                     }
                 }
             } else {
+                // Occupancy percentage
                 Text(
                     text = occupancyText,
-                    style = TextStyle(
-                        color = ColorProvider(R.color.widget_text_primary),
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                )
+
+                Spacer(modifier = GlanceModifier.height(2.dp))
+
+                // ↻ last updated time
+                Text(
+                    text = lastUpdatedText,
+                    style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 18.sp),
+                    modifier = GlanceModifier.clickable(refreshAction)
                 )
             }
         }
