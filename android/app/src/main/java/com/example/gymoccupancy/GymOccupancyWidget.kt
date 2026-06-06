@@ -252,7 +252,10 @@ private fun WidgetContent(
             Text(
                 text = lastUpdatedText,
                 style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 11.sp),
-                modifier = GlanceModifier.clickable(refreshAction)
+                modifier = GlanceModifier
+                    .background(ImageProvider(R.drawable.refresh_button_bg))
+                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                    .clickable(refreshAction)
             )
             if (logoBitmap != null) {
                 Spacer(modifier = GlanceModifier.width(8.dp))
@@ -315,7 +318,10 @@ private fun WidgetContent(
                         Text(
                             text = lastUpdatedText,
                             style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 14.sp),
-                            modifier = GlanceModifier.clickable(refreshAction)
+                            modifier = GlanceModifier
+                                .background(ImageProvider(R.drawable.refresh_button_bg))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .clickable(refreshAction)
                         )
                     }
 
@@ -356,11 +362,13 @@ private fun WidgetContent(
 
                 Spacer(modifier = GlanceModifier.height(2.dp))
 
-                // ↻ last updated time
                 Text(
                     text = lastUpdatedText,
                     style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 18.sp),
-                    modifier = GlanceModifier.clickable(refreshAction)
+                    modifier = GlanceModifier
+                        .background(ImageProvider(R.drawable.refresh_button_bg))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                        .clickable(refreshAction)
                 )
             }
         }
