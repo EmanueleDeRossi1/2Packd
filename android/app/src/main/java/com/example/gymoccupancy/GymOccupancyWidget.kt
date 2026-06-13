@@ -9,6 +9,7 @@ import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
+import androidx.core.graphics.toColorInt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -52,9 +53,9 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.transformLatest
+import androidx.core.graphics.createBitmap
 
 private val AppWidgetIdKey = ActionParameters.Key<Int>("appWidgetId")
-
 private val refreshTimestamps = mutableMapOf<Int, ArrayDeque<Long>>()
 private const val RATE_LIMIT_MAX = 3
 private const val RATE_LIMIT_WINDOW_MS = 60_000L
@@ -75,17 +76,14 @@ class RefreshAction : ActionCallback {
 
 fun getOccupancyColor(occupancy: Int): Int {
     return when {
-        occupancy < 40 -> Color.parseColor("#10B981")
-        occupancy < 50 -> blendColors("#10B981", "#F59E0B", (occupancy - 40) / 10f)
-        occupancy < 70 -> Color.parseColor("#F59E0B")
-        occupancy < 85 -> blendColors("#F59E0B", "#EF4444", (occupancy - 70) / 15f)
-        else -> Color.parseColor("#EF4444")
+        occupancy < 50 -> blendColors("#10B981", "#F59E0B", occupancy / 50f)
+        else -> blendColors("#F59E0B", "#EF4444", (occupancy - 50) / 50f)
     }
 }
 
 fun blendColors(color1: String, color2: String, ratio: Float): Int {
-    val c1 = Color.parseColor(color1)
-    val c2 = Color.parseColor(color2)
+    val c1 = color1.toColorInt()
+    val c2 = color2.toColorInt()
     val r = (Color.red(c1) * (1 - ratio) + Color.red(c2) * ratio).toInt()
     val g = (Color.green(c1) * (1 - ratio) + Color.green(c2) * ratio).toInt()
     val b = (Color.blue(c1) * (1 - ratio) + Color.blue(c2) * ratio).toInt()
@@ -95,9 +93,9 @@ fun blendColors(color1: String, color2: String, ratio: Float): Int {
 fun createOccupancyChart(dayUtilization: DayUtilization, width: Int, height: Int): Bitmap? {
     if (width <= 0 || height <= 0 || dayUtilization.totalSlots == 0) return null
 
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(width, height)
     val canvas = Canvas(bitmap)
-    canvas.drawColor(Color.parseColor("#353535"))
+    canvas.drawColor("#000000".toColorInt())
 
     val barSpacing = 6f
     val barWidth = (width.toFloat() / dayUtilization.totalSlots) - barSpacing
@@ -111,7 +109,7 @@ fun createOccupancyChart(dayUtilization: DayUtilization, width: Int, height: Int
         val top = height - barHeight
 
         val baseColor = if (slot.isCurrent) getOccupancyColor(slot.occupancy)
-                        else Color.parseColor("#6B6B6B")
+                        else "#6B6B6B".toColorInt()
 
         val r = Color.red(baseColor)
         val g = Color.green(baseColor)
