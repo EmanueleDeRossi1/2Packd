@@ -120,10 +120,77 @@ async function fetchAllGyms(env) {
   return allGyms;
 }
 
-async function runScheduledJob(env) {
-  console.log('Running scheduled job at:', new Date().toISOString());
-  const gymList = await fetchAllGyms(env);
-  console.log(`Fetched and stored ${gymList.length} gyms`);
+async function recordOccupancyHistory(env, gyms) {
+  const today = new Date();
+  const day = today.toISOString().split('T')[0];
+
+  let successCount = 0;
+  let errorCount = 0;
+
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < gyms.length; i += BATCH_SIZE) {
+    const batch = gyms.slice(i, i + BATCH_SIZE);
+    await Promise.all(batch.map(async gym => {
+      const operator = OPERATORS.find(o => o.id === gym.operatorId);
+      if (!operator) return;
+
+      try {
+        const url = operator.occupancyUrl.replace('{gymId}', gym.gymId);
+        const response = await fetch(url, { headers: operator.occupancyHeaders });
+        if (!response.ok) { errorCount++; return; }
+
+        const rawData = await response.json();
+        const transformer = OCCUPANCY_TRANSFORMERS[gym.operatorId];
+        const slots = transformer(rawData);
+
+        const stmt = env.gym_occupancy_history.prepare(
+          `INSERT OR REPLACE INTO occupancy_history (gym_id, location, operator_id, day, hour, occupancy)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        );
+        await env.gym_occupancy_history.batch(
+          slots.map(slot => stmt.bind(gym.gymId, gym.location, gym.operatorId, day, slot.startTime, slot.occupancy))
+        );
+        successCount++;
+      } catch (error) {
+        errorCount++;
+      }
+    }));
+  }
+}
+
+const OPERATOR_BY_CRON_MINUTE = {
+  4:  'fitness-first',  // 22:04 UTC = 23:04 CET
+  24: 'fitx',           // 22:24 UTC = 23:24 CET
+  44: 'rsg-group',      // 22:44 UTC = 23:44 CET
+  // 23:04 UTC = 00:04 CET (bestfit) handled by hour check below
+};
+
+async function runScheduledJob(env, scheduledTime, operatorOverride) {
+  const date = scheduledTime ? new Date(scheduledTime) : new Date();
+  const hour = date.getUTCHours();
+  const minute = date.getUTCMinutes();
+
+  let operatorId = operatorOverride;
+  if (!operatorId) {
+    if (hour === 23 && minute === 4) {
+      operatorId = 'bestfit';
+    } else {
+      operatorId = OPERATOR_BY_CRON_MINUTE[minute];
+    }
+  }
+
+  if (hour === 22 && minute === 4) {
+    const gymList = await fetchAllGyms(env);
+    console.log(`Fetched and stored ${gymList.length} gyms`);
+  }
+
+  const gymData = await env.GYM_DATA.get('gym-list');
+  if (!gymData) return;
+  const { gyms } = JSON.parse(gymData);
+  const filtered = operatorId ? gyms.filter(g => g.operatorId === operatorId) : gyms;
+
+  console.log(`Recording occupancy for ${filtered.length} ${operatorId} gyms`);
+  await recordOccupancyHistory(env, filtered);
 }
 
 
@@ -182,7 +249,12 @@ export default {
       if (!env.TRIGGER_SECRET || secret !== env.TRIGGER_SECRET) {
         return new Response('Unauthorized', { status: 401 });
       }
-      await runScheduledJob(env);
+      const operatorId = url.searchParams.get('operator');
+      if (url.searchParams.get('refresh-gyms') === 'true') {
+        ctx.waitUntil(fetchAllGyms(env));
+      } else {
+        ctx.waitUntil(runScheduledJob(env, null, operatorId));
+      }
       return new Response('OK');
     }
 
@@ -190,6 +262,6 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    await runScheduledJob(env);
+    ctx.waitUntil(runScheduledJob(env, event.scheduledTime));
   }
 }
