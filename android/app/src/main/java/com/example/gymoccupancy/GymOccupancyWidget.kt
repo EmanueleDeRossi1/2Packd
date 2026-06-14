@@ -11,8 +11,6 @@ import android.graphics.Paint
 import android.graphics.Shader
 import androidx.core.graphics.toColorInt
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -47,12 +45,6 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.transformLatest
 import androidx.core.graphics.createBitmap
 
 private val AppWidgetIdKey = ActionParameters.Key<Int>("appWidgetId")
@@ -70,7 +62,8 @@ class RefreshAction : ActionCallback {
         }
         if (timestamps.size >= RATE_LIMIT_MAX) return
         timestamps.addLast(now)
-        GymOccupancyWidget.notifyConfigChanged(appWidgetId)
+        //GymOccupancyWidget.notifyConfigChanged(appWidgetId)
+        GymOccupancyWidget().update(context, glanceId)
     }
 }
 
@@ -138,55 +131,30 @@ fun createOccupancyChart(dayUtilization: DayUtilization, width: Int, height: Int
 
 class GymOccupancyWidget : GlanceAppWidget() {
 
-    companion object {
-        private val configUpdates = MutableSharedFlow<Int>(extraBufferCapacity = 8)
-
-        fun notifyConfigChanged(appWidgetId: Int) {
-            configUpdates.tryEmit(appWidgetId)
-        }
-    }
-
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
         android.util.Log.d("GymWidget", "provideGlance: appWidgetId=$appWidgetId")
 
-        data class WidgetState(
-            val gymName: String?,
-            val dayUtilization: DayUtilization?,
-            val logoFile: java.io.File?,
-            val isLoading: Boolean = false,
-            val lastUpdated: String? = null
-        )
+        val gymName = getGymName(context, appWidgetId)
+        val cachedLogo = logoFileForWidget(context, appWidgetId)
+        val logoFile = if (cachedLogo.exists()) cachedLogo else null
 
-        val dataFlow: Flow<WidgetState> = configUpdates
-            .onStart { emit(appWidgetId) }
-            .filter { it == appWidgetId }
-            .transformLatest {
-                val gymName = getGymName(context, appWidgetId)
-                val cachedLogo = logoFileForWidget(context, appWidgetId)
-                val logoFile = if (cachedLogo.exists()) cachedLogo else null
-                emit(WidgetState(gymName, null, logoFile, isLoading = true))
-                delay(300)
-
-                val gymId = getGymId(context, appWidgetId)
-                val operatorId = getOperatorId(context, appWidgetId)
-                android.util.Log.d("GymWidget", "fetching data: gymId=$gymId operatorId=$operatorId")
-                val data = if (gymId != null && operatorId != null) {
-                    fetchOccupancyData(operatorId, gymId).also {
-                        android.util.Log.d("GymWidget", "fetchOccupancyData result: $it")
-                    }
-                } else null
-
-                val freshLogo = if (logoFile == null) fetchAndCacheLogo(context, appWidgetId) else logoFile
-                val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
-                emit(WidgetState(gymName, data, freshLogo, isLoading = false, lastUpdated = time))
+        val gymId = getGymId(context, appWidgetId)
+        val operatorId = getOperatorId(context, appWidgetId)
+        android.util.Log.d("GymWidget", "fetching data: gymId=$gymId operatorId=$operatorId")
+        val data = if (gymId != null && operatorId != null) {
+            fetchOccupancyData(operatorId, gymId).also {
+                android.util.Log.d("GymWidget", "fetchOccupancyData result: $it")
             }
+        } else null
+
+        val freshLogo = if (logoFile == null) fetchAndCacheLogo(context, appWidgetId) else logoFile
+        val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
 
         provideContent {
-            val state by dataFlow.collectAsState(initial = WidgetState(null, null, null))
-            WidgetContent(appWidgetId, state.gymName, state.dayUtilization, state.logoFile, state.isLoading, state.lastUpdated)
+            WidgetContent(appWidgetId, gymName, dayUtilization = data, freshLogo, lastUpdated = time)
         }
     }
 }
@@ -198,7 +166,6 @@ private fun WidgetContent(
     gymName: String?,
     dayUtilization: DayUtilization?,
     logoFile: java.io.File?,
-    isLoading: Boolean = false,
     lastUpdated: String? = null
 ) {
     val size = LocalSize.current
@@ -206,7 +173,6 @@ private fun WidgetContent(
     val density = context.resources.displayMetrics.density
 
     val occupancyText = when {
-        isLoading -> "..."
         dayUtilization?.isClosed == true -> "Closed"
         dayUtilization != null -> "${dayUtilization.currentOccupancy}%"
         else -> "—"

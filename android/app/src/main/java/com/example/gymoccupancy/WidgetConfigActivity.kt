@@ -46,11 +46,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import androidx.compose.foundation.Image
+import androidx.glance.appwidget.GlanceAppWidgetManager
 
 private val httpClient = OkHttpClient()
 
@@ -135,12 +138,17 @@ class WidgetConfigActivity : ComponentActivity() {
                     saveGymId(this, appWidgetId, gym.id)
                     saveOperatorId(this, appWidgetId, gym.operatorId)
                     saveGymName(this, appWidgetId, gym.location)
-                    logoFileForWidget(this, appWidgetId).delete()
                     saveLogoUrl(this, appWidgetId, gym.logoUrl)
+                    logoFileForWidget(this, appWidgetId).delete()
                     setResult(Activity.RESULT_OK, Intent().apply {
                         putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
                     })
-                    GymOccupancyWidget.notifyConfigChanged(appWidgetId)
+                    val glanceId = GlanceAppWidgetManager(this).getGlanceIdBy(appWidgetId)
+                    if (glanceId != null) {
+                        kotlinx.coroutines.MainScope().launch {
+                            GymOccupancyWidget().update(this@WidgetConfigActivity, glanceId)
+                        }
+                    }
                     finish()
                 }
             )
