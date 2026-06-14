@@ -10,12 +10,18 @@ directory = "./public"
 binding = "GYM_DATA"
 id = "ebaf19ce6bea438da05b97b0f45e5223"
 
-# Scheduled trigger - runs daily at 3.26 AM UTC
+# Scheduled trigger - one operator per run, staggered
 [triggers]
-crons = ["26 3 * * *"]
+crons = ["4 22 * * *", "24 22 * * *", "44 22 * * *", "4 23 * * *"]
 
 # Environment for development
 [env.dev]
 [[env.dev.kv_namespaces]]
 binding = "GYM_DATA"
 id = "ebaf19ce6bea438da05b97b0f45e5223"
+
+# Access data to D1 DB
+[[d1_databases]]
+binding = "gym_occupancy_history"
+database_name = "gym-occupancy-history"
+database_id = "da044d7a-e764-4732-bb29-50486c263ed9"
