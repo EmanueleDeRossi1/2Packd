@@ -1,25 +1,25 @@
 import { BRAND_LOGOS } from '../logos.js';
 
+// brand: null means the gym is excluded from the list
 const RSG_BRAND_RULES = [
-    { prefix: 'McFIT',              brand: 'mcfit' },
-    { prefix: 'KLUB McFIT',         brand: 'klub-mcfit' },
-    { prefix: 'JOHN REED',          brand: 'john-reed' },
-    { prefix: 'John Reed',          brand: 'john-reed' },
-    { prefix: "JOHN & JANE'S",      brand: null },       // no occupancy data
-    { prefix: "Gold's Gym",         brand: 'golds-gym' },
-    { prefix: 'High5 Ghost Studio', brand: null },       // no occupancy data
-    { prefix: 'McFIT Ghost Studio', brand: 'mcfit' },
-    { prefix: 'ALDI SPORTS',        brand: null },       // no occupancy data
-    { prefix: 'HEIMAT',             brand: null },       // no occupancy data
-    { prefix: 'RSG Group',          brand: null },   // exclude
-    { prefix: 'Zentrale',           brand: null },   // exclude
+    { prefix: 'McFIT',              brand: 'McFIT' },
+    { prefix: 'KLUB McFIT',         brand: 'KLUB McFIT' },
+    { prefix: 'JOHN REED',          brand: 'John Reed' },
+    { prefix: 'John Reed',          brand: 'John Reed' },
+    { prefix: "JOHN & JANE'S",      brand: null },
+    { prefix: "Gold's Gym",         brand: "Gold's Gym" },
+    { prefix: 'High5 Ghost Studio', brand: null },
+    { prefix: 'ALDI SPORTS',        brand: null },
+    { prefix: 'HEIMAT',             brand: null },
+    { prefix: 'RSG Group',          brand: null },
+    { prefix: 'Zentrale',           brand: null },
   ];
-  
+
   const BESTFIT_BRAND_RULES = [
-    { prefix: 'Ai Fitness',    brand: 'ai-fitness' },
-    { prefix: 'FIT STAR',      brand: null },        // no occupancy data
-    { prefix: 'Testing',       brand: null },        // exclude
-    { prefix: 'Ai Verwaltung', brand: null },        // exclude
+    { prefix: 'Ai Fitness',    brand: 'Ai Fitness' },
+    { prefix: 'FIT STAR',      brand: null },
+    { prefix: 'Testing',       brand: null },
+    { prefix: 'Ai Verwaltung', brand: null },
   ];
   
   function extractBrand(studioName, rules) {

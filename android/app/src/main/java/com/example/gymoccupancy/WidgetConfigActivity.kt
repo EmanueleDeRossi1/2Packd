@@ -181,7 +181,7 @@ fun GymPickerFlow(onGymSelected: (Gym) -> Unit) {
                 val brands = remember(gyms) {
                     gyms!!
                         .groupBy { it.brand }
-                        .map { (brand, list) -> Brand(brand, brandLabel(brand), list.first().logoUrl) }
+                        .map { (brand, list) -> Brand(brand, brand, list.first().logoUrl) }
                         .sortedBy { it.label }
                 }
                 BrandScreen(brands, onBrandSelected = { selectedBrand = it })
@@ -319,21 +319,6 @@ fun GymRow(gym: Gym, onClick: () -> Unit) {
     }
 }
 
-fun brandLabel(brand: String): String = when (brand) {
-    "mcfit"        -> "McFIT"
-    "klub-mcfit"   -> "KLUB McFIT"
-    "john-reed"    -> "JOHN REED"
-    "john-jane"    -> "JOHN & JANE'S"
-    "golds-gym"    -> "Gold's Gym"
-    "high5"        -> "High5"
-    "aldi-sports"  -> "ALDI Sports"
-    "heimat"       -> "HEIMAT"
-    "fitness-first"-> "Fitness First"
-    "fitx"         -> "FitX"
-    "ai-fitness"   -> "Ai Fitness"
-    "fit-star"     -> "FIT STAR"
-    else           -> brand
-}
 
 fun loadBitmapFromUrl(url: String): android.graphics.Bitmap? {
     return try {
