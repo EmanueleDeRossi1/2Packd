@@ -10,9 +10,10 @@ directory = "./public"
 binding = "GYM_DATA"
 id = "ebaf19ce6bea438da05b97b0f45e5223"
 
-# Scheduled trigger - one operator per run, staggered
+# Scheduled trigger - one operator per run, staggered.
+# All runs at 21:xx UTC = 23:xx Berlin in summer (CEST) / 22:xx in winter (CET),
 [triggers]
-crons = ["4 22 * * *", "24 22 * * *", "44 22 * * *", "4 23 * * *"]
+crons = ["0 21 * * *", "15 21 * * *", "30 21 * * *", "45 21 * * *"]
 
 # Environment for development
 [env.dev]
