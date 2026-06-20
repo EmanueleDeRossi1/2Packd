@@ -137,7 +137,11 @@ async function recordOccupancyHistory(env, gyms) {
       try {
         const url = operator.occupancyUrl.replace('{gymId}', gym.gymId);
         const response = await fetch(url, { headers: operator.occupancyHeaders });
-        if (!response.ok) { errorCount++; return; }
+        if (!response.ok) {
+          errorCount++;
+          console.error(`[occupancy] HTTP ${response.status} for gym ${gym.gymId} (${gym.operatorId}): ${url}`);
+          return;
+        }
 
         const rawData = await response.json();
         const transformer = OCCUPANCY_TRANSFORMERS[gym.operatorId];
@@ -153,16 +157,21 @@ async function recordOccupancyHistory(env, gyms) {
         successCount++;
       } catch (error) {
         errorCount++;
+        console.error(`[occupancy] failed for gym ${gym.gymId} (${gym.operatorId}):`, error?.message ?? error);
       }
     }));
   }
+
+  return { successCount, errorCount };
 }
 
+// All runs fire at 21:xx UTC (= 23:xx Berlin in summer, 22:xx in winter),
+// before local midnight while the operator forecast is still populated.
 const OPERATOR_BY_CRON_MINUTE = {
-  4:  'fitness-first',  // 22:04 UTC = 23:04 CET
-  24: 'fitx',           // 22:24 UTC = 23:24 CET
-  44: 'rsg-group',      // 22:44 UTC = 23:44 CET
-  // 23:04 UTC = 00:04 CET (bestfit) handled by hour check below
+  0:  'fitness-first',  // 21:00 UTC
+  15: 'fitx',           // 21:15 UTC
+  30: 'rsg-group',      // 21:30 UTC
+  45: 'bestfit',        // 21:45 UTC
 };
 
 async function runScheduledJob(env, scheduledTime, operatorOverride) {
@@ -172,14 +181,10 @@ async function runScheduledJob(env, scheduledTime, operatorOverride) {
 
   let operatorId = operatorOverride;
   if (!operatorId) {
-    if (hour === 23 && minute === 4) {
-      operatorId = 'bestfit';
-    } else {
-      operatorId = OPERATOR_BY_CRON_MINUTE[minute];
-    }
+    operatorId = OPERATOR_BY_CRON_MINUTE[minute];
   }
 
-  if (hour === 22 && minute === 4) {
+  if (hour === 21 && minute === 0) {
     const gymList = await fetchAllGyms(env);
     console.log(`Fetched and stored ${gymList.length} gyms`);
   }
@@ -189,8 +194,9 @@ async function runScheduledJob(env, scheduledTime, operatorOverride) {
   const { gyms } = JSON.parse(gymData);
   const filtered = operatorId ? gyms.filter(g => g.operatorId === operatorId) : gyms;
 
-  console.log(`Recording occupancy for ${filtered.length} ${operatorId} gyms`);
-  await recordOccupancyHistory(env, filtered);
+  console.log(`[occupancy] starting — ${filtered.length} ${operatorId ?? 'all'} gyms`);
+  const { successCount, errorCount } = await recordOccupancyHistory(env, filtered);
+  console.log(`[occupancy] done — success: ${successCount}, errors: ${errorCount}`);
 }
 
 
