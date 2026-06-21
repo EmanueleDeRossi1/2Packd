@@ -98,14 +98,16 @@ fun createOccupancyChart(dayUtilization: DayUtilization, width: Int, height: Int
     val currentIndex = dayUtilization.slots.indexOfFirst { it.isCurrent }
 
     for ((i, slot) in dayUtilization.slots.withIndex()) {
+        // null occupancy = unknown future hour → leave the column empty
+        val occupancy = slot.occupancy ?: continue
         val left = i * (barWidth + barSpacing)
         val right = left + barWidth
-        val barHeight = maxOf((slot.occupancy * height / 100).toFloat(), minBarHeight)
+        val barHeight = maxOf((occupancy * height / 100).toFloat(), minBarHeight)
         val top = height - barHeight
 
         val baseColor = when {
             i < currentIndex -> "#3D3D3D".toColorInt() // dark grey
-            i == currentIndex -> getOccupancyColor(slot.occupancy)
+            i == currentIndex -> getOccupancyColor(occupancy)
             else ->  "#9E9E9E".toColorInt() // light gray
         }
 

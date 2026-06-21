@@ -90,7 +90,8 @@ suspend fun fetchAndCacheLogo(context: Context, appWidgetId: Int): File? =
 data class UtilizationSlot(
     val startTime: String,
     val endTime: String,
-    val occupancy: Int,
+    // null = unknown (future hour with no forecast yet); 0 = genuinely empty
+    val occupancy: Int?,
     val isCurrent: Boolean,
     val index: Int
     )
@@ -136,7 +137,8 @@ suspend fun fetchOccupancyData(operatorId: String, gymId: String): DayUtilizatio
                 for (i in 0 until jsonArray.length()) {
                     val jsonSlot = jsonArray.optJSONObject(i) ?: continue
 
-                    val occupancy = jsonSlot.optInt("occupancy", 0)
+                    // null in JSON = unknown future hour; keep it null (optInt would coerce to 0)
+                    val occupancy = if (jsonSlot.isNull("occupancy")) null else jsonSlot.optInt("occupancy", 0)
                     val isCurrent = jsonSlot.optBoolean("isCurrent", false)
                     val startTime = jsonSlot.optString("startTime", "")
                     val endTime = jsonSlot.optString("endTime", "")
@@ -145,7 +147,7 @@ suspend fun fetchOccupancyData(operatorId: String, gymId: String): DayUtilizatio
                     allSlots.add(slot)
 
                     if (isCurrent) {
-                        currentOccupancy = occupancy
+                        currentOccupancy = occupancy ?: 0
                     }
                 }
                 // what if there is no current (the gym may be closed at this time)
@@ -155,14 +157,10 @@ suspend fun fetchOccupancyData(operatorId: String, gymId: String): DayUtilizatio
                 val latestEndTime = allSlots.maxOf { it.endTime }
                 val totalSlots = allSlots.size
 
-                // filter out slots where time > currentTime
-                val slots = if (currentStartTime != null) {
-                    allSlots.filter { it.startTime <= currentStartTime }
-                } else {
-                    allSlots
-                }
+                // Keep the full day: future hours arrive with occupancy = null
+                // (unknown) and render as empty until forecasts are added.
                 return@withContext DayUtilization(
-                    slots = slots,
+                    slots = allSlots,
                     currentOccupancy = currentOccupancy,
                     earliestStartTime = earliestStartTime,
                     latestEndTime = latestEndTime,
