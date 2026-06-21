@@ -17,6 +17,7 @@ const RSG_BRAND_RULES = [
 
   const BESTFIT_BRAND_RULES = [
     { prefix: 'Ai Fitness',    brand: 'Ai Fitness' },
+    { prefix: 'AI Fitness',    brand: 'Ai Fitness' },
     { prefix: 'FIT STAR',      brand: null },
     { prefix: 'Testing',       brand: null },
     { prefix: 'Ai Verwaltung', brand: null },
