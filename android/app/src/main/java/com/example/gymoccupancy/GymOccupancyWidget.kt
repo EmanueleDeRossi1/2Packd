@@ -62,20 +62,23 @@ private const val RATE_LIMIT_WINDOW_MS = 60_000L
 // provideGlance (and its one-shot fetch) to re-run.
 private val OccupancyJsonKey = stringPreferencesKey("occupancy_json")
 private val LastUpdatedKey = stringPreferencesKey("last_updated")
+private val GymNameKey = stringPreferencesKey("gym_name")
+private val LogoPathKey = stringPreferencesKey("logo_path")
 
-// Fetch occupancy for the widget and write it into Glance state. Reads the gym
-// config from SharedPreferences. Does NOT call update() — callers decide whether
-// to push (provideGlance reads the fresh state directly; RefreshAction/config
-// call update() afterwards to recompose the live widget).
 suspend fun loadOccupancyIntoState(context: Context, appWidgetId: Int) {
     val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
     val gymId = getGymId(context, appWidgetId)
     val operatorId = getOperatorId(context, appWidgetId)
     val json = if (gymId != null && operatorId != null) fetchOccupancyRaw(operatorId, gymId) else null
     val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+    val gymName = getGymName(context, appWidgetId)
+    val cachedLogo = logoFileForWidget(context, appWidgetId)
+    val logoFile = if (cachedLogo.exists()) cachedLogo else fetchAndCacheLogo(context, appWidgetId)
     updateAppWidgetState(context, glanceId) { prefs ->
         if (json != null) prefs[OccupancyJsonKey] = json else prefs.remove(OccupancyJsonKey)
         prefs[LastUpdatedKey] = time
+        if (gymName != null) prefs[GymNameKey] = gymName else prefs.remove(GymNameKey)
+        if (logoFile != null) prefs[LogoPathKey] = logoFile.absolutePath else prefs.remove(LogoPathKey)
     }
 }
 
@@ -165,15 +168,6 @@ class GymOccupancyWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
 
-        val gymName = getGymName(context, appWidgetId)
-        val cachedLogo = logoFileForWidget(context, appWidgetId)
-        val logoFile = if (cachedLogo.exists()) cachedLogo else null
-        val freshLogo = if (logoFile == null) fetchAndCacheLogo(context, appWidgetId) else logoFile
-
-        // Fetch fresh occupancy into Glance state on this (re)start. The content
-        // below reads the data from reactive state, so later update() calls
-        // (refresh button / config) recompose with new data without re-running
-        // provideGlance.
         loadOccupancyIntoState(context, appWidgetId)
 
         provideContent {
@@ -181,7 +175,10 @@ class GymOccupancyWidget : GlanceAppWidget() {
             val json = prefs[OccupancyJsonKey]
             val data = remember(json) { json?.let { parseOccupancyJson(it) } }
             val lastUpdated = prefs[LastUpdatedKey]
-            WidgetContent(appWidgetId, gymName, dayUtilization = data, freshLogo, lastUpdated = lastUpdated)
+            val gymName = prefs[GymNameKey]
+            val logoPath = prefs[LogoPathKey]
+            val logoFile = remember(logoPath) { logoPath?.let { java.io.File(it) } }
+            WidgetContent(appWidgetId, gymName, dayUtilization = data, logoFile, lastUpdated = lastUpdated)
         }
     }
 }
