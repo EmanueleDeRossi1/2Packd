@@ -115,7 +115,7 @@ fun createOccupancyChart(dayUtilization: DayUtilization, width: Int, height: Int
 
     val bitmap = createBitmap(width, height)
     val canvas = Canvas(bitmap)
-    canvas.drawColor("#000000".toColorInt())
+    canvas.drawColor("#353535".toColorInt())
 
     val barSpacing = 6f
     val barWidth = (width.toFloat() / dayUtilization.totalSlots) - barSpacing
