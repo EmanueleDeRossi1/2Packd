@@ -11,7 +11,7 @@ It currently supports 786 total gyms from the following gym chains:
 * John Reed
 * McFit
 
-If you have any suggestions, feedback, or additional gyms you would like to add, reach out at [emanuelederossi313@gmail.com](mailto:myemail@gmail.com)! Feel also free to open a PR for any suggestions/bugs.
+If you have any suggestions, feedback, or additional gyms you would like to add, reach out at [emanuelederossi313@gmail.com](mailto:emanuelederossi313@gmail.com)! Feel also free to open a PR for any suggestions/bugs.
 
 <p align="center">
   <img src="docs/widget-large.jpeg" width="350">
@@ -40,21 +40,24 @@ The Android widget:
 Technologies used:
 
 * Kotlin
+* Jetpack Glance (Compose-based app widgets)
+* Jetpack Compose + Material 3 (gym-picker config screen)
 * Coroutines
 * OkHttp
-* Android AppWidget API
 
 ---
 
 ### Serverless API Proxy
 
-A serverless worker that aggregates and normalizes gym APIs.
+A serverless worker that aggregates and normalizes gym APIs. It keeps the widget gym-agnostic: each chain has its own API and response format, so the proxy hides those differences behind one unified API.
 
-Responsibilities:
+Technologies used:
 
-* fetch gym lists from providers
-* normalize responses across operators
-* expose a unified API for the widget
+* Cloudflare Workers (JavaScript)
+* Workers KV — caches normalized gym lists
+* Cloudflare D1 — stores daily occupancy history snapshots
+* Cron Triggers — staggered nightly refresh
+* Wrangler — local dev & deploy
 
 Endpoints:
 
@@ -85,3 +88,7 @@ Manually triggers the scheduled job that re-fetches and caches all gym lists in 
 cd proxy
 npm run deploy
 ```
+
+## Roadmap
+
+The proxy currently serves only current and past occupancy. Use the daily history snapshots in D1 to forecast how busy a gym will be later in the day.
