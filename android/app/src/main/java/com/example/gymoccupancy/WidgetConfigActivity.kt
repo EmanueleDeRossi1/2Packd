@@ -143,13 +143,18 @@ class WidgetConfigActivity : ComponentActivity() {
                     setResult(Activity.RESULT_OK, Intent().apply {
                         putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
                     })
-                    val glanceId = GlanceAppWidgetManager(this).getGlanceIdBy(appWidgetId)
-                    if (glanceId != null) {
-                        kotlinx.coroutines.MainScope().launch {
-                            GymOccupancyWidget().update(this@WidgetConfigActivity, glanceId)
-                        }
+                    // Fetch occupancy for the chosen gym into Glance state, then update() to
+                    // recompose the live widget. The widget content reads occupancy from
+                    // reactive Glance state, so this reliably fills the widget in immediately
+                    // instead of waiting for the next process restart.
+                    val appContext = applicationContext
+                    val widgetId = appWidgetId
+                    MainScope().launch {
+                        loadOccupancyIntoState(appContext, widgetId)
+                        val glanceId = GlanceAppWidgetManager(appContext).getGlanceIdBy(widgetId)
+                        GymOccupancyWidget().update(appContext, glanceId)
+                        finish()
                     }
-                    finish()
                 }
             )
         }

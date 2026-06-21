@@ -11,6 +11,11 @@ import android.graphics.Paint
 import android.graphics.Shader
 import androidx.core.graphics.toColorInt
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.glance.currentState
+import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -52,6 +57,28 @@ private val refreshTimestamps = mutableMapOf<Int, ArrayDeque<Long>>()
 private const val RATE_LIMIT_MAX = 3
 private const val RATE_LIMIT_WINDOW_MS = 60_000L
 
+// Glance state keys. The occupancy data is fetched into this reactive state and
+// read at render time, so update()/recompose reflects new data without needing
+// provideGlance (and its one-shot fetch) to re-run.
+private val OccupancyJsonKey = stringPreferencesKey("occupancy_json")
+private val LastUpdatedKey = stringPreferencesKey("last_updated")
+
+// Fetch occupancy for the widget and write it into Glance state. Reads the gym
+// config from SharedPreferences. Does NOT call update() — callers decide whether
+// to push (provideGlance reads the fresh state directly; RefreshAction/config
+// call update() afterwards to recompose the live widget).
+suspend fun loadOccupancyIntoState(context: Context, appWidgetId: Int) {
+    val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
+    val gymId = getGymId(context, appWidgetId)
+    val operatorId = getOperatorId(context, appWidgetId)
+    val json = if (gymId != null && operatorId != null) fetchOccupancyRaw(operatorId, gymId) else null
+    val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+    updateAppWidgetState(context, glanceId) { prefs ->
+        if (json != null) prefs[OccupancyJsonKey] = json else prefs.remove(OccupancyJsonKey)
+        prefs[LastUpdatedKey] = time
+    }
+}
+
 class RefreshAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val appWidgetId = parameters[AppWidgetIdKey] ?: return
@@ -62,7 +89,7 @@ class RefreshAction : ActionCallback {
         }
         if (timestamps.size >= RATE_LIMIT_MAX) return
         timestamps.addLast(now)
-        //GymOccupancyWidget.notifyConfigChanged(appWidgetId)
+        loadOccupancyIntoState(context, appWidgetId)
         GymOccupancyWidget().update(context, glanceId)
     }
 }
@@ -137,26 +164,24 @@ class GymOccupancyWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
-        android.util.Log.d("GymWidget", "provideGlance: appWidgetId=$appWidgetId")
 
         val gymName = getGymName(context, appWidgetId)
         val cachedLogo = logoFileForWidget(context, appWidgetId)
         val logoFile = if (cachedLogo.exists()) cachedLogo else null
-
-        val gymId = getGymId(context, appWidgetId)
-        val operatorId = getOperatorId(context, appWidgetId)
-        android.util.Log.d("GymWidget", "fetching data: gymId=$gymId operatorId=$operatorId")
-        val data = if (gymId != null && operatorId != null) {
-            fetchOccupancyData(operatorId, gymId).also {
-                android.util.Log.d("GymWidget", "fetchOccupancyData result: $it")
-            }
-        } else null
-
         val freshLogo = if (logoFile == null) fetchAndCacheLogo(context, appWidgetId) else logoFile
-        val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+
+        // Fetch fresh occupancy into Glance state on this (re)start. The content
+        // below reads the data from reactive state, so later update() calls
+        // (refresh button / config) recompose with new data without re-running
+        // provideGlance.
+        loadOccupancyIntoState(context, appWidgetId)
 
         provideContent {
-            WidgetContent(appWidgetId, gymName, dayUtilization = data, freshLogo, lastUpdated = time)
+            val prefs = currentState<Preferences>()
+            val json = prefs[OccupancyJsonKey]
+            val data = remember(json) { json?.let { parseOccupancyJson(it) } }
+            val lastUpdated = prefs[LastUpdatedKey]
+            WidgetContent(appWidgetId, gymName, dayUtilization = data, freshLogo, lastUpdated = lastUpdated)
         }
     }
 }

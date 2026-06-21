@@ -105,72 +105,72 @@ data class DayUtilization(
     val isClosed: Boolean
 )
 
-// suspend marks this as a coroutine function (can be paused/resumend)
-// without blocking the thread
-// = is the "single-expression function" syntax
-suspend fun fetchOccupancyData(operatorId: String, gymId: String): DayUtilization? =
-// this switches the coroutin to a backgroud thread for I/O operations
-// where Dispatchers.IO is a thread pool for I/O
-// a thread pool is a collection of pre-created worker threads
-// that are reused for tasks. So you dont need to create a thread each time
-    // a thread is just a separate path of exeuction in your program (multiple threads=your app can do multiple things at once)
+// Fetch the raw occupancy JSON body from the proxy. We store this raw string in
+// Glance state and parse it at render time, so the network call is decoupled from
+// the widget composition lifecycle.
+suspend fun fetchOccupancyRaw(operatorId: String, gymId: String): String? =
     withContext(Dispatchers.IO) {
-
         try {
             val request = Request.Builder()
                 .url("https://gym-occupancy-proxy.ederossi.workers.dev/$operatorId/$gymId/occupancy")
                 .get()
                 .build()
-
             httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    return@withContext null
-                }
-
-                val body = response.body?.string()
-                    ?: return@withContext null
-
-                val jsonArray = JSONArray(body)
-                val allSlots = mutableListOf<UtilizationSlot>()
-                var currentOccupancy = 0
-
-                for (i in 0 until jsonArray.length()) {
-                    val jsonSlot = jsonArray.optJSONObject(i) ?: continue
-
-                    // null in JSON = unknown future hour; keep it null (optInt would coerce to 0)
-                    val occupancy = if (jsonSlot.isNull("occupancy")) null else jsonSlot.optInt("occupancy", 0)
-                    val isCurrent = jsonSlot.optBoolean("isCurrent", false)
-                    val startTime = jsonSlot.optString("startTime", "")
-                    val endTime = jsonSlot.optString("endTime", "")
-                    val index = i
-                    val slot = UtilizationSlot(startTime, endTime, occupancy, isCurrent, index)
-                    allSlots.add(slot)
-
-                    if (isCurrent) {
-                        currentOccupancy = occupancy ?: 0
-                    }
-                }
-                // what if there is no current (the gym may be closed at this time)
-                val currentStartTime = allSlots.find { it.isCurrent }?.startTime
-
-                val earliestStartTime = allSlots.minOf { it.startTime }
-                val latestEndTime = allSlots.maxOf { it.endTime }
-                val totalSlots = allSlots.size
-
-                // Keep the full day: future hours arrive with occupancy = null
-                // (unknown) and render as empty until forecasts are added.
-                return@withContext DayUtilization(
-                    slots = allSlots,
-                    currentOccupancy = currentOccupancy,
-                    earliestStartTime = earliestStartTime,
-                    latestEndTime = latestEndTime,
-                    totalSlots = totalSlots,
-                    isClosed = currentStartTime == null
-                )
+                if (!response.isSuccessful) return@withContext null
+                response.body?.string()
             }
         } catch (e: Exception) {
-            android.util.Log.e("GymWidget", "fetchOccupancyData error: ${e.javaClass.simpleName}: ${e.message}", e)
+            android.util.Log.e("GymWidget", "fetchOccupancyRaw error: ${e.javaClass.simpleName}: ${e.message}", e)
             null
         }
     }
+
+// Parse the proxy's occupancy JSON body into a DayUtilization. Pure/synchronous so
+// it can run inside the Glance composition when reading from state.
+fun parseOccupancyJson(body: String): DayUtilization? {
+    return try {
+        val jsonArray = JSONArray(body)
+        val allSlots = mutableListOf<UtilizationSlot>()
+        var currentOccupancy = 0
+
+        for (i in 0 until jsonArray.length()) {
+            val jsonSlot = jsonArray.optJSONObject(i) ?: continue
+
+            // null in JSON = unknown future hour; keep it null (optInt would coerce to 0)
+            val occupancy = if (jsonSlot.isNull("occupancy")) null else jsonSlot.optInt("occupancy", 0)
+            val isCurrent = jsonSlot.optBoolean("isCurrent", false)
+            val startTime = jsonSlot.optString("startTime", "")
+            val endTime = jsonSlot.optString("endTime", "")
+            val slot = UtilizationSlot(startTime, endTime, occupancy, isCurrent, i)
+            allSlots.add(slot)
+
+            if (isCurrent) {
+                currentOccupancy = occupancy ?: 0
+            }
+        }
+        if (allSlots.isEmpty()) return null
+
+        // what if there is no current (the gym may be closed at this time)
+        val currentStartTime = allSlots.find { it.isCurrent }?.startTime
+        val earliestStartTime = allSlots.minOf { it.startTime }
+        val latestEndTime = allSlots.maxOf { it.endTime }
+
+        // Keep the full day: future hours arrive with occupancy = null
+        // (unknown) and render as empty until forecasts are added.
+        DayUtilization(
+            slots = allSlots,
+            currentOccupancy = currentOccupancy,
+            earliestStartTime = earliestStartTime,
+            latestEndTime = latestEndTime,
+            totalSlots = allSlots.size,
+            isClosed = currentStartTime == null
+        )
+    } catch (e: Exception) {
+        android.util.Log.e("GymWidget", "parseOccupancyJson error: ${e.javaClass.simpleName}: ${e.message}", e)
+        null
+    }
+}
+
+suspend fun fetchOccupancyData(operatorId: String, gymId: String): DayUtilization? =
+    fetchOccupancyRaw(operatorId, gymId)?.let { parseOccupancyJson(it) }
 
