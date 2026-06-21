@@ -10,7 +10,8 @@ import {
   transformFitnessFirstOccupancy,
   transformFitXOccupancy,
   transformRSGOccupancy,
-  transformBestFitOccupancy
+  transformBestFitOccupancy,
+  nullFutureOccupancy
 } from './transformers/occupancy.js';
 
 const LIST_TRANSFORMERS = {
@@ -236,8 +237,8 @@ export default {
             const rawData = await response.json();
 
             const transformer = OCCUPANCY_TRANSFORMERS[operatorId];
-            const transformedData = transformer(rawData);
-    
+            const transformedData = nullFutureOccupancy(transformer(rawData));
+
             return new Response(JSON.stringify(transformedData), {
                   headers: { 'content-type': 'application/json' }
             })
