@@ -133,7 +133,7 @@ fun createOccupancyChart(dayUtilization: DayUtilization, width: Int, height: Int
         val top = height - barHeight
 
         val baseColor = when {
-            i < currentIndex -> "#3D3D3D".toColorInt() // dark grey
+            i < currentIndex -> "#6B6B6B".toColorInt() // medium grey (visible on dark bg)
             i == currentIndex -> getOccupancyColor(occupancy)
             else ->  "#9E9E9E".toColorInt() // light gray
         }
