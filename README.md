@@ -24,6 +24,8 @@ If you have any suggestions, feedback, or additional gyms you would like to add,
 
 [Download latest APK](https://github.com/EmanueleDeRossi1/gym-occupancy-android-widget/releases/latest)
 
+> **Note:** Widget refresh may fail on mobile data. If this happens,  disable the Data Saver in Settings > Network & Internet > Data Saver for this app.
+
 ## Architecture
 
 The project consists of two components.
