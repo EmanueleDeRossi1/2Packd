@@ -59,6 +59,7 @@ async function fetchFitnessFirstGyms(operator) {
 
   const allFitnessFirstRawData = [];
   let url = operator.gymListUrl;
+  const MAX_SKIP_ATTEMPTS = 5;
 
   // collect all data
   while (url) {
@@ -68,18 +69,43 @@ async function fetchFitnessFirstGyms(operator) {
       });
 
       if (!response.ok) {
-        console.error(`Failed to fetch gym list from ${operator.name}: ${response.status} ${response.statusText}`);
-        return [];
+        console.warn(`Failed to fetch from ${url}: ${response.status} ${response.statusText}`);
+
+        // Try to skip past the bad range with small increments
+        let skipAttempts = 0;
+        let skipUrl = url;
+        const currentOffset = extractOffsetFromUrl(url);
+
+        while (skipAttempts < MAX_SKIP_ATTEMPTS) {
+          skipAttempts++;
+          const nextOffset = currentOffset + (10 * skipAttempts);
+          skipUrl = `${operator.gymListUrl}?page[offset]=${nextOffset}&page[limit]=50`;
+
+          console.log(`Skipping range... attempt ${skipAttempts}: trying offset ${nextOffset}`);
+
+          const skipResponse = await fetch(skipUrl, { headers: operator.gymListHeaders });
+          if (skipResponse.ok) {
+            console.log(`Found working offset: ${nextOffset}`);
+            url = skipUrl;
+            break;
+          }
+        }
+
+        if (skipAttempts >= MAX_SKIP_ATTEMPTS) {
+          console.log(`Unable to skip past the bad range after ${MAX_SKIP_ATTEMPTS} attempts. Ending pagination.`);
+          url = null;
+        }
+        continue;
       }
 
       const pageData = await response.json();
       url = pageData.links?.next?.href || null;
-  
+
       allFitnessFirstRawData.push(...pageData.data);
-  
+
       } catch (error) {
           console.error(`Error fetching gyms for operator ${operator.name}:`, error);
-          return [];
+          url = null;
       }
     }
 
@@ -88,6 +114,11 @@ async function fetchFitnessFirstGyms(operator) {
 
   return gymList;
 
+}
+
+function extractOffsetFromUrl(url) {
+  const match = url.match(/page%5Boffset%5D=(\d+)|page\[offset\]=(\d+)/);
+  return match ? parseInt(match[1] || match[2]) : 0;
 }
 
 
