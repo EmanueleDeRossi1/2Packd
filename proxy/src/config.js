@@ -40,5 +40,18 @@ export const OPERATORS = [
       gymListHeaders: {},
       occupancyHeaders: {},
       timeout: 10000
+    },
+    {
+      id: 'clever-fit',
+      name: 'Clever Fit',
+      gymListUrl: 'https://clever-fit.api.magicline.com/connect/v2/studio',
+      occupancyUrl: 'https://clever-fit.api.magicline.com/connect/v1/studio/{gymId}/utilization',
+      gymListHeaders: {
+        'Accept': 'application/json'
+      },
+      occupancyHeaders: {
+        'Accept': 'application/json'
+      },
+      timeout: 10000
     }
   ];

@@ -92,3 +92,18 @@ const RSG_BRAND_RULES = [
       logoUrl: BRAND_LOGOS[brand] ?? null,
     }));
   }
+
+  export function transformCleverFit(rawData) {
+    const brand = 'Clever Fit';
+    return rawData
+      .filter(gym => /^clever\s*fit/i.test(gym.studioName))
+      .map(gym => ({
+        gymId: gym.id,
+        gymName: gym.studioName,
+        location: gym.studioName.replace(/^clever\s*fit\s*/i, '').trim(),
+        city: gym.address.city,
+        operatorId: 'clever-fit',
+        brand,
+        logoUrl: BRAND_LOGOS[brand] ?? null,
+      }));
+  }

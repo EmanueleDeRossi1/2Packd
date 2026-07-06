@@ -3,7 +3,8 @@ import {
   transformFitnessFirst,
   transformFitX,
   transformRSG,
-  transformBestFit
+  transformBestFit,
+  transformCleverFit
 } from './transformers/gyms.js';
 
 import {
@@ -11,6 +12,7 @@ import {
   transformFitXOccupancy,
   transformRSGOccupancy,
   transformBestFitOccupancy,
+  transformCleverFitOccupancy,
   nullFutureOccupancy
 } from './transformers/occupancy.js';
 
@@ -18,7 +20,8 @@ const LIST_TRANSFORMERS = {
   'fitness-first': transformFitnessFirst,
   'fitx': transformFitX,
   'rsg-group': transformRSG,
-  'bestfit': transformBestFit
+  'bestfit': transformBestFit,
+  'clever-fit': transformCleverFit
 };
 
 
@@ -26,7 +29,8 @@ const OCCUPANCY_TRANSFORMERS = {
   'fitness-first': transformFitnessFirstOccupancy,
   'fitx': transformFitXOccupancy,
   'rsg-group': transformRSGOccupancy,
-  'bestfit': transformBestFitOccupancy
+  'bestfit': transformBestFitOccupancy,
+  'clever-fit': transformCleverFitOccupancy
 };
 
 async function fetchOperatorGyms(operator) {
@@ -201,9 +205,10 @@ async function recordOccupancyHistory(env, gyms) {
 // before local midnight while the operator forecast is still populated.
 const OPERATOR_BY_CRON_MINUTE = {
   0:  'fitness-first',  // 21:00 UTC
-  15: 'fitx',           // 21:15 UTC
-  30: 'rsg-group',      // 21:30 UTC
-  45: 'bestfit',        // 21:45 UTC
+  12: 'fitx',           // 21:12 UTC
+  24: 'rsg-group',      // 21:24 UTC
+  36: 'bestfit',        // 21:36 UTC
+  48: 'clever-fit'      // 21:48 UTC
 };
 
 async function runScheduledJob(env, scheduledTime, operatorOverride) {

@@ -55,3 +55,14 @@ export function transformBestFitOccupancy(rawData) {
         isCurrent: item.isCurrent
     }));
 }
+
+export function transformCleverFitOccupancy(rawData) {
+    if (!rawData || !rawData.items) return [];
+    
+    return rawData.items.map(item => ({
+        startTime: item.startTime,
+        endTime: item.endTime,
+        occupancy: item.percentage,
+        isCurrent: item.isCurrent
+    }));
+}
