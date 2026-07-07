@@ -22,6 +22,22 @@ const RSG_BRAND_RULES = [
     { prefix: 'Testing',       brand: null },
     { prefix: 'Ai Verwaltung', brand: null },
   ];
+
+  const CLEVERFIT_BRAND_RULES = [
+    { prefix: 'Clever Fit',                         brand: 'Clever Fit' },
+    { prefix: 'Clever fit',                         brand: 'Clever Fit' },
+    { prefix: 'clever fit',                         brand: 'Clever Fit' },
+    { prefix: 'clever Fit',                         brand: 'Clever Fit' },
+    { prefix: 'CleverFit',                          brand: 'Clever Fit' },
+    { prefix: 'cf',                                 brand: 'Clever Fit' },
+    { prefix: 'CF',                                 brand: null }, // Only one gym, doesn't show occupancy
+    { prefix: 'redfit',                             brand: 'Clever Fit' }, // Only one gym, kept under Clever Fit for simplicity
+    { prefix: 'clever fit Österreich - Verwaltung', brand: null},
+    { prefix: 'VK BODYFIT',                         brand: null},
+    { prefix: 'PK Fitness',                         brand: null },
+    { prefix: 'Headquarter',                        brand: null },
+
+  ]
   
   function extractBrand(studioName, rules) {
     const match = rules.find(r => studioName.startsWith(r.prefix));
@@ -94,16 +110,15 @@ const RSG_BRAND_RULES = [
   }
 
   export function transformCleverFit(rawData) {
-    const brand = 'Clever Fit';
     return rawData
-      .filter(gym => /^clever\s*fit/i.test(gym.studioName))
-      .map(gym => ({
-        gymId: gym.id,
-        gymName: gym.studioName,
-        location: gym.studioName.replace(/^clever\s*fit\s*/i, '').trim(),
-        city: gym.address.city,
-        operatorId: 'clever-fit',
-        brand,
-        logoUrl: BRAND_LOGOS[brand] ?? null,
-      }));
-  }
+      .map(gym => {
+        const brand = extractBrand(gym.studioName, CLEVERFIT_BRAND_RULES);
+        return {
+          gymId: gym.id,
+          gymName: gym.studioName,
+          location: extractLocation(gym.studioName, CLEVERFIT_BRAND_RULES),
+          city: gym.address.city,
+          operatorId: 'clever-fit',
+          brand,
+          logoUrl: BRAND_LOGOS[brand] ?? null,
+        }})};
