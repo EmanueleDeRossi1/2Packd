@@ -2,7 +2,7 @@
 
 You wanted to get a 6 pack. But the gym is, unfortunately, 2 packed. **2Packd** is an Android home-screen widget that displays how busy your gym is in real-time, so you now have yet another reason to skip it.
 
-It currently supports 786 total gyms from the following gym chains: 
+It currently supports 1213 total gyms from the following gym chains: 
 
 * All Inclusive Fitness
 * FitX
@@ -10,6 +10,7 @@ It currently supports 786 total gyms from the following gym chains:
 * Gold's Gym
 * John Reed
 * McFit
+* Clever Fit
 
 If you have any suggestions, feedback, or additional gyms you would like to add, reach out at [emanuelederossi313@gmail.com](mailto:emanuelederossi313@gmail.com)! Feel also free to open a PR for any suggestions/bugs.
 
