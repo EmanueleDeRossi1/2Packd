@@ -223,7 +223,7 @@ private fun DualWidgetContent(
                         .clickable(configSlot1Action),
                     verticalAlignment = Alignment.Vertical.Top
                 ) {
-                    SingleGymPanel(
+                    GymPanel(
                         gymName = gymName1 ?: "Gym 1",
                         dayUtilization = dayUtilization1,
                         logoFile = logoFile1,
@@ -252,7 +252,7 @@ private fun DualWidgetContent(
                         .clickable(configSlot2Action),
                     verticalAlignment = Alignment.Vertical.Top
                 ) {
-                    SingleGymPanel(
+                    GymPanel(
                         gymName = gymName2 ?: "Gym 2",
                         dayUtilization = dayUtilization2,
                         logoFile = logoFile2,
@@ -274,7 +274,7 @@ private fun DualWidgetContent(
                         .defaultWeight()
                         .clickable(configSlot1Action)
                 ) {
-                    SingleGymPanel(
+                    GymPanel(
                         gymName = gymName1 ?: "Gym 1",
                         dayUtilization = dayUtilization1,
                         logoFile = logoFile1,
@@ -300,7 +300,7 @@ private fun DualWidgetContent(
                         .defaultWeight()
                         .clickable(configSlot2Action)
                 ) {
-                    SingleGymPanel(
+                    GymPanel(
                         gymName = gymName2 ?: "Gym 2",
                         dayUtilization = dayUtilization2,
                         logoFile = logoFile2,
@@ -315,8 +315,9 @@ private fun DualWidgetContent(
     }
 }
 
+@SuppressLint("RestrictedApi")
 @Composable
-private fun SingleGymPanel(
+private fun GymPanel(
     gymName: String,
     dayUtilization: DayUtilization?,
     logoFile: File?,

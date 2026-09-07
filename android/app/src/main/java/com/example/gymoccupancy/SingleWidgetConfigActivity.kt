@@ -116,7 +116,7 @@ val TextPrimary = Color(0xFFFFFFFF)
 val TextSecondary = Color(0xFF999999)
 val Accent = Color(0xFF10B981)
 
-class WidgetConfigActivity : ComponentActivity() {
+class SingleWidgetConfigActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -150,7 +150,7 @@ class WidgetConfigActivity : ComponentActivity() {
                     MainScope().launch {
                         loadOccupancyIntoState(appContext, widgetId)
                         val glanceId = GlanceAppWidgetManager(appContext).getGlanceIdBy(widgetId)
-                        GymOccupancyWidget().update(appContext, glanceId)
+                        SingleGymOccupancyWidget().update(appContext, glanceId)
                         finish()
                     }
                 }

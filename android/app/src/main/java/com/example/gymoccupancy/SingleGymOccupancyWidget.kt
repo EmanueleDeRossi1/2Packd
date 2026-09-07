@@ -3,13 +3,6 @@ package com.example.gymoccupancy
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.LinearGradient
-import android.graphics.Paint
-import android.graphics.Shader
-import androidx.core.graphics.toColorInt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.datastore.preferences.core.Preferences
@@ -50,7 +43,6 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import androidx.core.graphics.createBitmap
 
 private val AppWidgetIdKey = ActionParameters.Key<Int>("appWidgetId")
 private val refreshTimestamps = mutableMapOf<Int, ArrayDeque<Long>>()
@@ -93,13 +85,13 @@ class RefreshAction : ActionCallback {
         if (timestamps.size >= RATE_LIMIT_MAX) return
         timestamps.addLast(now)
         loadOccupancyIntoState(context, appWidgetId)
-        GymOccupancyWidget().update(context, glanceId)
+        SingleGymOccupancyWidget().update(context, glanceId)
     }
 }
 
 
 
-class GymOccupancyWidget : GlanceAppWidget() {
+class SingleGymOccupancyWidget : GlanceAppWidget() {
 
     override val sizeMode = SizeMode.Exact
 
@@ -116,14 +108,14 @@ class GymOccupancyWidget : GlanceAppWidget() {
             val gymName = prefs[GymNameKey]
             val logoPath = prefs[LogoPathKey]
             val logoFile = remember(logoPath) { logoPath?.let { java.io.File(it) } }
-            WidgetContent(appWidgetId, gymName, dayUtilization = data, logoFile, lastUpdated = lastUpdated)
+            SingleWidgetContent(appWidgetId, gymName, dayUtilization = data, logoFile, lastUpdated = lastUpdated)
         }
     }
 }
 
 @SuppressLint("RestrictedApi")
 @Composable
-private fun WidgetContent(
+private fun SingleWidgetContent(
     appWidgetId: Int,
     gymName: String?,
     dayUtilization: DayUtilization?,
@@ -146,7 +138,7 @@ private fun WidgetContent(
         android.graphics.BitmapFactory.decodeFile(logoFile.absolutePath)
     } else null
 
-    val configIntent = Intent(context, WidgetConfigActivity::class.java).apply {
+    val configIntent = Intent(context, SingleWidgetConfigActivity::class.java).apply {
         putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
     }
@@ -306,6 +298,6 @@ private fun WidgetContent(
     }
 }
 
-class GymOccupancyReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = GymOccupancyWidget()
+class SingleGymOccupancyReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = SingleGymOccupancyWidget()
 }
