@@ -26,46 +26,37 @@ private val httpClient = OkHttpClient()
 
 fun saveGymId(context: Context, appWidgetId: Int, gymId: String, slot: Int = 1) {
     val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
-    val key = if (slot == 1) "gym_id_$appWidgetId" else "gym_id_${slot}_$appWidgetId"
-    prefs.edit { putString(key, gymId) }
+    prefs.edit { putString("gym_id_${slot}_${appWidgetId}", gymId) }
 }
 
 fun saveOperatorId(context: Context, appWidgetId: Int, operatorId: String, slot: Int = 1) {
     val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
-    val key = if (slot == 1) "operator_id_$appWidgetId" else "operator_id_${slot}_$appWidgetId"
-    prefs.edit { putString(key, operatorId) }
+    prefs.edit { putString("operator_id_${slot}_${appWidgetId}", operatorId) }
 }
 
 fun saveGymName(context: Context, appWidgetId: Int, gymName: String, slot: Int = 1) {
     val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
-    val key = if (slot == 1) "gym_name_$appWidgetId" else "gym_name_${slot}_$appWidgetId"
-    prefs.edit { putString(key, gymName) }
+    prefs.edit { putString("gym_name_${slot}_${appWidgetId}", gymName) }
 }
 
 fun getGymId(context: Context, appWidgetId: Int, slot: Int = 1): String? {
     val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
-    val slotKey = "gym_id_${slot}_$appWidgetId"
-    return prefs.getString(slotKey, null)
-        ?: if (slot == 1) prefs.getString("gym_id_$appWidgetId", null) else null
+    return prefs.getString("gym_id_${slot}_${appWidgetId}", null)
 }
 
 fun getOperatorId(context: Context, appWidgetId: Int, slot: Int = 1): String? {
     val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
-    val slotKey = "operator_id_${slot}_$appWidgetId"
-    return prefs.getString(slotKey, null)
-        ?: if (slot == 1) prefs.getString("operator_id_$appWidgetId", null) else null
+    return prefs.getString("operator_id_${slot}_${appWidgetId}", null)
 }
 
 fun getGymName(context: Context, appWidgetId: Int, slot: Int = 1): String? {
     val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
-    val slotKey = "gym_name_${slot}_$appWidgetId"
-    return prefs.getString(slotKey, null)
-        ?: if (slot == 1) prefs.getString("gym_name_$appWidgetId", null) else null
+    return prefs.getString("gym_name_${slot}_${appWidgetId}", null)
 }
 
 fun saveLogoUrl(context: Context, appWidgetId: Int, logoUrl: String?, slot: Int = 1) {
     val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
-    val key = if (slot == 1) "logo_url_$appWidgetId" else "logo_url_${slot}_$appWidgetId"
+    val key = "logo_url_${slot}_${appWidgetId}"
     prefs.edit {
         if (logoUrl != null) putString(key, logoUrl)
         else remove(key)
@@ -74,14 +65,11 @@ fun saveLogoUrl(context: Context, appWidgetId: Int, logoUrl: String?, slot: Int 
 
 fun getLogoUrl(context: Context, appWidgetId: Int, slot: Int = 1): String? {
     val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
-    val slotKey = "logo_url_${slot}_$appWidgetId"
-    return prefs.getString(slotKey, null)
-        ?: if (slot == 1) prefs.getString("logo_url_$appWidgetId", null) else null
+    return prefs.getString("logo_url_${slot}_${appWidgetId}", null)
 }
 
 fun logoFileForWidget(context: Context, appWidgetId: Int, slot: Int = 1): File =
-    if (slot == 1) File(context.filesDir, "logo_$appWidgetId.png")
-    else File(context.filesDir, "logo_${slot}_$appWidgetId.png")
+    File(context.filesDir, "logo_${slot}_${appWidgetId}.png")
 
 suspend fun fetchAndCacheLogo(context: Context, appWidgetId: Int, slot: Int = 1): File? =
     withContext(Dispatchers.IO) {
