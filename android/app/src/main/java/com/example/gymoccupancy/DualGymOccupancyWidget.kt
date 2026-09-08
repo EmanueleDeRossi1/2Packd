@@ -199,7 +199,7 @@ private fun DualWidgetContent(
         if (isWide) {
             Row(
                 modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
-                verticalAlignment = Alignment.Vertical.Top
+                verticalAlignment = Alignment.Vertical.CenterVertically
             ) {
                 Column(
                     modifier = GlanceModifier
@@ -214,8 +214,6 @@ private fun DualWidgetContent(
                         logoFile = logoFile1,
                         size = size,
                         density = density,
-                        lastUpdatedText = lastUpdatedText,
-                        refreshAction = refreshAction
                     )
                 }
 
@@ -243,10 +241,17 @@ private fun DualWidgetContent(
                         logoFile = logoFile2,
                         size = size,
                         density = density,
-                        lastUpdatedText = lastUpdatedText,
-                        refreshAction = refreshAction
                     )
                 }
+                Text(
+                    text = lastUpdatedText,
+                    style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 11.sp),
+                    modifier = GlanceModifier
+                        .background(ImageProvider(R.drawable.refresh_button_bg))
+                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                        .clickable(refreshAction)
+                )
+
             }
         } else {
             Column(
@@ -265,8 +270,6 @@ private fun DualWidgetContent(
                         logoFile = logoFile1,
                         size = size,
                         density = density,
-                        lastUpdatedText = lastUpdatedText,
-                        refreshAction = refreshAction
                     )
                 }
 
@@ -291,8 +294,6 @@ private fun DualWidgetContent(
                         logoFile = logoFile2,
                         size = size,
                         density = density,
-                        lastUpdatedText = lastUpdatedText,
-                        refreshAction = refreshAction
                     )
                 }
             }
@@ -308,8 +309,6 @@ private fun GymPanel(
     logoFile: File?,
     size: androidx.compose.ui.unit.DpSize,
     density: Float,
-    lastUpdatedText: String,
-    refreshAction: androidx.glance.action.Action
 ) {
     val occupancyText = when {
         dayUtilization?.isClosed == true -> "Closed"
@@ -349,7 +348,6 @@ private fun GymPanel(
 
         Spacer(modifier = GlanceModifier.height(4.dp))
 
-        // Occupancy % (left) and refresh button (right under logo)
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.Vertical.CenterVertically
@@ -357,15 +355,6 @@ private fun GymPanel(
             Text(
                 text = occupancyText,
                 style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            )
-            Spacer(modifier = GlanceModifier.defaultWeight())
-            Text(
-                text = lastUpdatedText,
-                style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 10.sp),
-                modifier = GlanceModifier
-                    .background(ImageProvider(R.drawable.refresh_button_bg))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                    .clickable(refreshAction)
             )
         }
 
