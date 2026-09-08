@@ -148,7 +148,7 @@ class SingleWidgetConfigActivity : ComponentActivity() {
                     val appContext = applicationContext
                     val widgetId = appWidgetId
                     MainScope().launch {
-                        loadOccupancyIntoState(appContext, widgetId)
+                        loadSingleOccupancyIntoState(appContext, widgetId)
                         val glanceId = GlanceAppWidgetManager(appContext).getGlanceIdBy(widgetId)
                         SingleGymOccupancyWidget().update(appContext, glanceId)
                         finish()

@@ -57,7 +57,7 @@ private val LastUpdatedKey = stringPreferencesKey("last_updated")
 private val GymNameKey = stringPreferencesKey("gym_name")
 private val LogoPathKey = stringPreferencesKey("logo_path")
 
-suspend fun loadOccupancyIntoState(context: Context, appWidgetId: Int) {
+suspend fun loadSingleOccupancyIntoState(context: Context, appWidgetId: Int) {
     val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
     val gymId = getGymId(context, appWidgetId)
     val operatorId = getOperatorId(context, appWidgetId)
@@ -74,7 +74,7 @@ suspend fun loadOccupancyIntoState(context: Context, appWidgetId: Int) {
     }
 }
 
-class RefreshAction : ActionCallback {
+class SingleRefreshAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val appWidgetId = parameters[AppWidgetIdKey] ?: return
         val now = System.currentTimeMillis()
@@ -84,7 +84,7 @@ class RefreshAction : ActionCallback {
         }
         if (timestamps.size >= RATE_LIMIT_MAX) return
         timestamps.addLast(now)
-        loadOccupancyIntoState(context, appWidgetId)
+        loadSingleOccupancyIntoState(context, appWidgetId)
         SingleGymOccupancyWidget().update(context, glanceId)
     }
 }
@@ -98,7 +98,7 @@ class SingleGymOccupancyWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
 
-        loadOccupancyIntoState(context, appWidgetId)
+        loadSingleOccupancyIntoState(context, appWidgetId)
 
         provideContent {
             val prefs = currentState<Preferences>()
@@ -142,7 +142,7 @@ private fun SingleWidgetContent(
         putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
     }
-    val refreshAction = actionRunCallback<RefreshAction>(actionParametersOf(AppWidgetIdKey to appWidgetId))
+    val refreshAction = actionRunCallback<SingleRefreshAction>(actionParametersOf(AppWidgetIdKey to appWidgetId))
     val configAction = actionStartActivity(configIntent)
     val lastUpdatedText = if (lastUpdated != null) "↻ $lastUpdated" else "↻"
 
@@ -171,15 +171,6 @@ private fun SingleWidgetContent(
             } else {
                 Spacer(modifier = GlanceModifier.defaultWeight())
             }
-            Spacer(modifier = GlanceModifier.width(8.dp))
-            Text(
-                text = lastUpdatedText,
-                style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 11.sp),
-                modifier = GlanceModifier
-                    .background(ImageProvider(R.drawable.refresh_button_bg))
-                    .padding(horizontal = 6.dp, vertical = 3.dp)
-                    .clickable(refreshAction)
-            )
             if (logoBitmap != null) {
                 Spacer(modifier = GlanceModifier.width(8.dp))
                 Image(
@@ -189,6 +180,15 @@ private fun SingleWidgetContent(
                     modifier = GlanceModifier.height(36.dp).width(36.dp)
                 )
             }
+            Spacer(modifier = GlanceModifier.width(8.dp))
+            Text(
+                text = lastUpdatedText,
+                style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 11.sp),
+                modifier = GlanceModifier
+                    .background(ImageProvider(R.drawable.refresh_button_bg))
+                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                    .clickable(refreshAction)
+            )
         }
     } else {
         Column(
