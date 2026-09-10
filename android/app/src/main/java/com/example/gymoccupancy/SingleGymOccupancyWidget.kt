@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.DpSize
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.currentState
@@ -90,10 +91,20 @@ class SingleRefreshAction : ActionCallback {
 }
 
 
-
 class SingleGymOccupancyWidget : GlanceAppWidget() {
 
-    override val sizeMode = SizeMode.Exact
+    companion object {
+        // I should test if these dimensions work on both tablets and phones
+        val size1x4 = DpSize(280.dp, 100.dp)
+        val size2x4 = DpSize(280.dp, 200.dp)
+    }
+
+    override val sizeMode = SizeMode.Responsive(
+        setOf(
+            size1x4,
+            size2x4
+        )
+    )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
@@ -108,7 +119,8 @@ class SingleGymOccupancyWidget : GlanceAppWidget() {
             val gymName = prefs[GymNameKey]
             val logoPath = prefs[LogoPathKey]
             val logoFile = remember(logoPath) { logoPath?.let { java.io.File(it) } }
-            SingleWidgetContent(appWidgetId, gymName, dayUtilization = data, logoFile, lastUpdated = lastUpdated)
+            val size = LocalSize.current
+            SingleWidgetContent(appWidgetId, gymName, dayUtilization = data, logoFile, lastUpdated = lastUpdated, size = size)
         }
     }
 }
@@ -120,24 +132,19 @@ private fun SingleWidgetContent(
     gymName: String?,
     dayUtilization: DayUtilization?,
     logoFile: java.io.File?,
-    lastUpdated: String? = null
+    lastUpdated: String? = null,
+    size: DpSize
 ) {
-    val size = LocalSize.current
     val context = LocalContext.current
     val density = context.resources.displayMetrics.density
-
     val occupancyText = when {
         dayUtilization?.isClosed == true -> "Closed"
         dayUtilization != null -> "${dayUtilization.currentOccupancy}%"
         else -> "—"
     }
-    val isWide = size.width > size.height * 1.5f
-    val isTall = size.height > 100.dp
-
     val logoBitmap = if (logoFile != null && logoFile.exists()) {
         android.graphics.BitmapFactory.decodeFile(logoFile.absolutePath)
     } else null
-
     val configIntent = Intent(context, SingleWidgetConfigActivity::class.java).apply {
         putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -146,8 +153,7 @@ private fun SingleWidgetContent(
     val configAction = actionStartActivity(configIntent)
     val lastUpdatedText = if (lastUpdated != null) "↻ $lastUpdated" else "↻"
 
-    if (isWide && !isTall) {
-        // 1x4 single-row layout
+    if (SingleGymOccupancyWidget.size1x4 == size) {
         Row(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -190,7 +196,7 @@ private fun SingleWidgetContent(
                     .clickable(refreshAction)
             )
         }
-    } else {
+    } else if (SingleGymOccupancyWidget.size2x4 == size) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -226,73 +232,63 @@ private fun SingleWidgetContent(
 
             Spacer(modifier = GlanceModifier.height(4.dp))
 
-            if (isWide && isTall && dayUtilization != null) {
-                Row(
-                    modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
-                    verticalAlignment = Alignment.Vertical.CenterVertically
-                ) {
-                    // Left: % stacked above ↻ time
-                    Column(verticalAlignment = Alignment.Vertical.CenterVertically) {
-                        Text(
-                            text = occupancyText,
-                            style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                        )
-                        Spacer(modifier = GlanceModifier.height(16.dp))
-                        Text(
-                            text = lastUpdatedText,
-                            style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 14.sp),
-                            modifier = GlanceModifier
-                                .background(ImageProvider(R.drawable.refresh_button_bg))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                .clickable(refreshAction)
+            Row(
+                modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                verticalAlignment = Alignment.Vertical.CenterVertically
+            ) {
+                // Left: % stacked above ↻ time
+                Column(verticalAlignment = Alignment.Vertical.CenterVertically) {
+                    Text(
+                        text = occupancyText,
+                        style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                    )
+                    Spacer(modifier = GlanceModifier.height(16.dp))
+                    Text(
+                        text = lastUpdatedText,
+                        style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 14.sp),
+                        modifier = GlanceModifier
+                            .background(ImageProvider(R.drawable.refresh_button_bg))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .clickable(refreshAction)
+                    )
+                }
+                Spacer(modifier = GlanceModifier.width(12.dp))
+
+                // Right: chart above 07:00 / 22:00
+                Column(modifier = GlanceModifier.defaultWeight().fillMaxSize()) {
+                    val chartBitmap = dayUtilization?.let {
+                    val chartW = (size.width.value * density * 0.65f).toInt()
+                    val chartH = (size.height.value * density * 0.55f).toInt()
+                    createOccupancyChart(dayUtilization, chartW, chartH)
+                    }
+                    if (chartBitmap != null) {
+                        Image(
+                            provider = ImageProvider(chartBitmap),
+                            contentDescription = "Occupancy chart",
+                            contentScale = ContentScale.FillBounds,
+                            modifier = GlanceModifier.fillMaxWidth().defaultWeight()
                         )
                     }
-
-                    Spacer(modifier = GlanceModifier.width(12.dp))
-
-                    // Right: chart above 07:00 / 22:00
-                    Column(modifier = GlanceModifier.defaultWeight().fillMaxSize()) {
-                        val chartW = (size.width.value * density * 0.65f).toInt()
-                        val chartH = (size.height.value * density * 0.55f).toInt()
-                        val chartBitmap = createOccupancyChart(dayUtilization, chartW, chartH)
-                        if (chartBitmap != null) {
-                            Image(
-                                provider = ImageProvider(chartBitmap),
-                                contentDescription = "Occupancy chart",
-                                contentScale = ContentScale.FillBounds,
-                                modifier = GlanceModifier.fillMaxWidth().defaultWeight()
-                            )
-                        }
+                    if (dayUtilization != null) {
                         Row(modifier = GlanceModifier.fillMaxWidth()) {
                             Text(
                                 text = dayUtilization.earliestStartTime.take(5),
-                                style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 11.sp)
+                                style = TextStyle(
+                                    color = ColorProvider(R.color.widget_text_secondary),
+                                    fontSize = 11.sp
+                                )
                             )
                             Spacer(modifier = GlanceModifier.defaultWeight())
                             Text(
                                 text = dayUtilization.latestEndTime.take(5),
-                                style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 11.sp)
+                                style = TextStyle(
+                                    color = ColorProvider(R.color.widget_text_secondary),
+                                    fontSize = 11.sp
+                                )
                             )
                         }
                     }
                 }
-            } else {
-                // Occupancy percentage
-                Text(
-                    text = occupancyText,
-                    style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                )
-
-                Spacer(modifier = GlanceModifier.height(2.dp))
-
-                Text(
-                    text = lastUpdatedText,
-                    style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 18.sp),
-                    modifier = GlanceModifier
-                        .background(ImageProvider(R.drawable.refresh_button_bg))
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
-                        .clickable(refreshAction)
-                )
             }
         }
     }

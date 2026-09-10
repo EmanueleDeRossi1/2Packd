@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -118,7 +119,20 @@ class DualRefreshAction : ActionCallback {
 
 class DualGymOccupancyWidget : GlanceAppWidget() {
 
-    override val sizeMode = SizeMode.Exact
+    companion object {
+        // I should test if these dimensions work on both tablets and phones
+        val size1x4 = DpSize(280.dp, 100.dp) // roughly a 1x4
+        val size2x4 = DpSize(280.dp, 200.dp) // roughly a 2x4
+        val size2x2 = DpSize(140.dp, 200.dp)// roughly a 2x2
+    }
+
+    override val sizeMode = SizeMode.Responsive(
+        setOf(
+            size1x4,
+            size2x4,
+            size2x2
+        )
+    )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
@@ -143,6 +157,8 @@ class DualGymOccupancyWidget : GlanceAppWidget() {
 
             val lastUpdated = prefs[LastUpdatedKey]
 
+            val size = LocalSize.current
+
             DualWidgetContent(
                 appWidgetId = appWidgetId,
                 gymName1 = gymName1,
@@ -151,7 +167,8 @@ class DualGymOccupancyWidget : GlanceAppWidget() {
                 gymName2 = gymName2,
                 dayUtilization2 = data2,
                 logoFile2 = logoFile2,
-                lastUpdated = lastUpdated
+                lastUpdated = lastUpdated,
+                size = size
             )
         }
     }
@@ -167,9 +184,9 @@ private fun DualWidgetContent(
     gymName2: String?,
     dayUtilization2: DayUtilization?,
     logoFile2: File?,
-    lastUpdated: String? = null
+    lastUpdated: String? = null,
+    size: DpSize,
 ) {
-    val size = LocalSize.current
     val context = LocalContext.current
     val density = context.resources.displayMetrics.density
 
@@ -188,15 +205,13 @@ private fun DualWidgetContent(
     val configSlot2Action = actionStartActivity(configSlot2Intent)
     val lastUpdatedText = if (lastUpdated != null) "↻ $lastUpdated" else "↻"
 
-    val isWide = size.width >= 240.dp
-
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(R.color.widget_background)
             .padding(10.dp)
     ) {
-        if (isWide) {
+        if (DualGymOccupancyWidget.size2x2 == size) {
             Row(
                 modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
                 verticalAlignment = Alignment.Vertical.CenterVertically
@@ -214,6 +229,7 @@ private fun DualWidgetContent(
                         logoFile = logoFile1,
                         size = size,
                         density = density,
+                        hasGraph = true,
                     )
                 }
 
@@ -241,19 +257,11 @@ private fun DualWidgetContent(
                         logoFile = logoFile2,
                         size = size,
                         density = density,
+                        hasGraph = true,
                     )
                 }
-                Text(
-                    text = lastUpdatedText,
-                    style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 11.sp),
-                    modifier = GlanceModifier
-                        .background(ImageProvider(R.drawable.refresh_button_bg))
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
-                        .clickable(refreshAction)
-                )
-
             }
-        } else {
+        } else if (DualGymOccupancyWidget.size1x4 == size) {
             Column(
                 modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
                 verticalAlignment = Alignment.Vertical.Top
@@ -270,6 +278,7 @@ private fun DualWidgetContent(
                         logoFile = logoFile1,
                         size = size,
                         density = density,
+                        hasGraph = false,
                     )
                 }
 
@@ -294,9 +303,78 @@ private fun DualWidgetContent(
                         logoFile = logoFile2,
                         size = size,
                         density = density,
+                        hasGraph = false,
                     )
                 }
             }
+            Text(
+                text = lastUpdatedText,
+                style = TextStyle(
+                    color = ColorProvider(R.color.widget_text_secondary),
+                    fontSize = 11.sp
+                ),
+                modifier = GlanceModifier
+                    .background(ImageProvider(R.drawable.refresh_button_bg))
+                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                    .clickable(refreshAction)
+            )
+        } else if (DualGymOccupancyWidget.size2x4 == size) {
+            Column(
+                modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                verticalAlignment = Alignment.Vertical.Top
+            ) {
+                Column(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .defaultWeight()
+                        .clickable(configSlot1Action)
+                ) {
+                    GymPanel(
+                        gymName = gymName1 ?: "Gym 1",
+                        dayUtilization = dayUtilization1,
+                        logoFile = logoFile1,
+                        size = size,
+                        density = density,
+                        hasGraph = true,
+                    )
+                }
+
+                Spacer(modifier = GlanceModifier.height(6.dp))
+                Spacer(
+                    modifier = GlanceModifier
+                        .height(1.dp)
+                        .fillMaxWidth()
+                        .background(ColorProvider(R.color.widget_text_secondary))
+                )
+                Spacer(modifier = GlanceModifier.height(6.dp))
+
+                Column(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .defaultWeight()
+                        .clickable(configSlot2Action)
+                ) {
+                    GymPanel(
+                        gymName = gymName2 ?: "Gym 2",
+                        dayUtilization = dayUtilization2,
+                        logoFile = logoFile2,
+                        size = size,
+                        density = density,
+                        hasGraph = true,
+                    )
+                }
+            }
+            Text(
+                text = lastUpdatedText,
+                style = TextStyle(
+                    color = ColorProvider(R.color.widget_text_secondary),
+                    fontSize = 11.sp
+                ),
+                modifier = GlanceModifier
+                    .background(ImageProvider(R.drawable.refresh_button_bg))
+                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                    .clickable(refreshAction)
+            )
         }
     }
 }
@@ -309,6 +387,7 @@ private fun GymPanel(
     logoFile: File?,
     size: androidx.compose.ui.unit.DpSize,
     density: Float,
+    hasGraph: Boolean = true,
 ) {
     val occupancyText = when {
         dayUtilization?.isClosed == true -> "Closed"
@@ -358,7 +437,7 @@ private fun GymPanel(
             )
         }
 
-        if (dayUtilization != null) {
+        if (dayUtilization != null && hasGraph) {
             Spacer(modifier = GlanceModifier.height(2.dp))
             val chartW = (size.width.value * density * 0.45f).toInt()
             val chartH = (size.height.value * density * 0.65f).toInt()
