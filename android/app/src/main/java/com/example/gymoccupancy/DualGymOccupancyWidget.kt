@@ -173,37 +173,56 @@ private fun DualWidgetContent(
     ) {
         when (size) {
             WidgetSizes.size2x4 -> {
-                Row(
+                Column(
                     modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
-                    verticalAlignment = Alignment.Vertical.CenterVertically
+                    verticalAlignment = Alignment.Vertical.Top
                 ) {
-                    Column(
-                        modifier = GlanceModifier
-                            .defaultWeight()
-                            .fillMaxHeight()
-                            .clickable(configSlot1Action),
-                        verticalAlignment = Alignment.Vertical.Top
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                        verticalAlignment = Alignment.Vertical.CenterVertically
                     ) {
-                        GymPanel(gymName1, dayUtilization1, logoFile1, size, density, hasGraph = true)
+                        Column(
+                            modifier = GlanceModifier
+                                .defaultWeight()
+                                .fillMaxHeight()
+                                .clickable(configSlot1Action),
+                            verticalAlignment = Alignment.Vertical.Top
+                        ) {
+                            GymPanel(
+                                gymName1,
+                                dayUtilization1,
+                                logoFile1,
+                                size,
+                                density,
+                                hasGraph = true
+                            )
+                        }
+                        Spacer(modifier = GlanceModifier.width(8.dp))
+                        Spacer(
+                            modifier = GlanceModifier
+                                .width(1.dp)
+                                .fillMaxHeight()
+                                .background(ColorProvider(R.color.widget_text_secondary))
+                        )
+                        Spacer(modifier = GlanceModifier.width(8.dp))
+                        Column(
+                            modifier = GlanceModifier
+                                .defaultWeight()
+                                .fillMaxHeight()
+                                .clickable(configSlot2Action),
+                            verticalAlignment = Alignment.Vertical.Top
+                        ) {
+                            GymPanel(
+                                gymName2,
+                                dayUtilization2,
+                                logoFile2,
+                                size,
+                                density,
+                                hasGraph = true
+                            )
+                        }
                     }
-                    Spacer(modifier = GlanceModifier.width(8.dp))
-                    Spacer(
-                        modifier = GlanceModifier
-                            .width(1.dp)
-                            .fillMaxHeight()
-                            .background(ColorProvider(R.color.widget_text_secondary))
-                    )
-                    Spacer(modifier = GlanceModifier.width(8.dp))
-                    Column(
-                        modifier = GlanceModifier
-                            .defaultWeight()
-                            .fillMaxHeight()
-                            .clickable(configSlot2Action),
-                        verticalAlignment = Alignment.Vertical.Top
-                    ) {
-                        GymPanel(gymName2, dayUtilization2, logoFile2, size, density, hasGraph = true)
-                    }
-                    RefreshButton(lastUpdatedText, refreshAction, 11.sp, 6.dp, 3.dp)
+                    RefreshButton(lastUpdatedText, refreshAction, 14.sp, 6.dp, 3.dp)
                 }
             }
             WidgetSizes.size1x4 -> {
@@ -302,10 +321,10 @@ private fun GymPanel(
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
-            GymName(gymName, fontSize = 13.sp)
+            GymName(gymName, fontSize = 16.sp)
             // here something
             Spacer(modifier = GlanceModifier.width(4.dp))
-            Logo(logoBitmap, gymName, 20.dp, 20.dp)
+            Logo(logoBitmap, gymName, 24.dp, 24.dp)
         }
         Spacer(modifier = GlanceModifier.height(4.dp))
         Row(
