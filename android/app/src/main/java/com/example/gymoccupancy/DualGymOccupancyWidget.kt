@@ -226,33 +226,35 @@ private fun DualWidgetContent(
                 }
             }
             WidgetSizes.size1x4 -> {
-                Column(
+                Row(
                     modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
                     verticalAlignment = Alignment.Vertical.Top
                 ) {
                     Column(
                         modifier = GlanceModifier
-                            .fillMaxWidth()
                             .defaultWeight()
-                            .clickable(configSlot1Action)
+                            .fillMaxHeight()
+                            .clickable(configSlot1Action),
+                        verticalAlignment = Alignment.Vertical.Top
                     ) {
                         GymPanel(gymName1, dayUtilization1, logoFile1, size, density, hasGraph = false)
                     }
 
-                    Spacer(modifier = GlanceModifier.height(6.dp))
+                    Spacer(modifier = GlanceModifier.width(6.dp))
                     Spacer(
                         modifier = GlanceModifier
-                            .height(1.dp)
-                            .fillMaxWidth()
+                            .width(1.dp)
+                            .fillMaxHeight()
                             .background(ColorProvider(R.color.widget_text_secondary))
                     )
-                    Spacer(modifier = GlanceModifier.height(6.dp))
+                    Spacer(modifier = GlanceModifier.width(6.dp))
 
                     Column(
                         modifier = GlanceModifier
-                            .fillMaxWidth()
                             .defaultWeight()
-                            .clickable(configSlot2Action)
+                            .fillMaxHeight()
+                            .clickable(configSlot2Action),
+                        verticalAlignment = Alignment.Vertical.Top
                     ) {
                         GymPanel(gymName2, dayUtilization2, logoFile2, size, density, hasGraph = false)
                     }
