@@ -3,6 +3,7 @@ package com.example.gymoccupancy
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.DpSize
@@ -12,6 +13,9 @@ import androidx.glance.currentState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.Button
+import androidx.glance.layout.Box
+import androidx.glance.ButtonDefaults
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
@@ -45,65 +49,37 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 
-private val AppWidgetIdKey = ActionParameters.Key<Int>("appWidgetId")
-private val refreshTimestamps = mutableMapOf<Int, ArrayDeque<Long>>()
-private const val RATE_LIMIT_MAX = 3
-private const val RATE_LIMIT_WINDOW_MS = 60_000L
-
-// Glance state keys. The occupancy data is fetched into this reactive state and
-// read at render time, so update()/recompose reflects new data without needing
-// provideGlance (and its one-shot fetch) to re-run.
-private val OccupancyJsonKey = stringPreferencesKey("occupancy_json")
-private val LastUpdatedKey = stringPreferencesKey("last_updated")
-private val GymNameKey = stringPreferencesKey("gym_name")
-private val LogoPathKey = stringPreferencesKey("logo_path")
+private object SingleWidgetKeys {
+    val OccupancyJson = stringPreferencesKey("occupancy_json")
+    val LastUpdated = stringPreferencesKey("last_updated")
+    val GymName = stringPreferencesKey("gym_name")
+    val LogoPath = stringPreferencesKey("logo_path")
+}
 
 suspend fun loadSingleOccupancyIntoState(context: Context, appWidgetId: Int) {
     val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
-    val gymId = getGymId(context, appWidgetId)
-    val operatorId = getOperatorId(context, appWidgetId)
-    val json = if (gymId != null && operatorId != null) fetchOccupancyRaw(operatorId, gymId) else null
-    val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
-    val gymName = getGymName(context, appWidgetId)
-    val cachedLogo = logoFileForWidget(context, appWidgetId)
-    val logoFile = if (cachedLogo.exists()) cachedLogo else fetchAndCacheLogo(context, appWidgetId)
+    val slot = fetchGymSlotData(context, appWidgetId)
     updateAppWidgetState(context, glanceId) { prefs ->
-        if (json != null) prefs[OccupancyJsonKey] = json else prefs.remove(OccupancyJsonKey)
-        prefs[LastUpdatedKey] = time
-        if (gymName != null) prefs[GymNameKey] = gymName else prefs.remove(GymNameKey)
-        if (logoFile != null) prefs[LogoPathKey] = logoFile.absolutePath else prefs.remove(LogoPathKey)
+        if (slot.json != null) prefs[SingleWidgetKeys.OccupancyJson] = slot.json else prefs.remove(SingleWidgetKeys.OccupancyJson)
+        prefs[SingleWidgetKeys.LastUpdated] = currentTimeLabel()
+        if (slot.gymName != null) prefs[SingleWidgetKeys.GymName] = slot.gymName else prefs.remove(SingleWidgetKeys.GymName)
+        if (slot.logoFile != null) prefs[SingleWidgetKeys.LogoPath] = slot.logoFile.absolutePath else prefs.remove(SingleWidgetKeys.LogoPath)
     }
 }
 
 class SingleRefreshAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val appWidgetId = parameters[AppWidgetIdKey] ?: return
-        val now = System.currentTimeMillis()
-        val timestamps = refreshTimestamps.getOrPut(appWidgetId) { ArrayDeque() }
-        while (timestamps.isNotEmpty() && now - timestamps.first() > RATE_LIMIT_WINDOW_MS) {
-            timestamps.removeFirst()
-        }
-        if (timestamps.size >= RATE_LIMIT_MAX) return
-        timestamps.addLast(now)
+        if (!isRefreshAllowed(appWidgetId)) return
         loadSingleOccupancyIntoState(context, appWidgetId)
         SingleGymOccupancyWidget().update(context, glanceId)
     }
 }
 
-
 class SingleGymOccupancyWidget : GlanceAppWidget() {
 
-    companion object {
-        // I should test if these dimensions work on both tablets and phones
-        val size1x4 = DpSize(280.dp, 100.dp)
-        val size2x4 = DpSize(280.dp, 200.dp)
-    }
-
     override val sizeMode = SizeMode.Responsive(
-        setOf(
-            size1x4,
-            size2x4
-        )
+        setOf(WidgetSizes.size1x4, WidgetSizes.size2x4)
     )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -113,11 +89,11 @@ class SingleGymOccupancyWidget : GlanceAppWidget() {
 
         provideContent {
             val prefs = currentState<Preferences>()
-            val json = prefs[OccupancyJsonKey]
+            val json = prefs[SingleWidgetKeys.OccupancyJson]
             val data = remember(json) { json?.let { parseOccupancyJson(it) } }
-            val lastUpdated = prefs[LastUpdatedKey]
-            val gymName = prefs[GymNameKey]
-            val logoPath = prefs[LogoPathKey]
+            val lastUpdated = prefs[SingleWidgetKeys.LastUpdated]
+            val gymName = prefs[SingleWidgetKeys.GymName]
+            val logoPath = prefs[SingleWidgetKeys.LogoPath]
             val logoFile = remember(logoPath) { logoPath?.let { java.io.File(it) } }
             val size = LocalSize.current
             SingleWidgetContent(appWidgetId, gymName, dayUtilization = data, logoFile, lastUpdated = lastUpdated, size = size)
@@ -137,11 +113,7 @@ private fun SingleWidgetContent(
 ) {
     val context = LocalContext.current
     val density = context.resources.displayMetrics.density
-    val occupancyText = when {
-        dayUtilization?.isClosed == true -> "Closed"
-        dayUtilization != null -> "${dayUtilization.currentOccupancy}%"
-        else -> "—"
-    }
+    val occupancyText = occupancyText(dayUtilization)
     val logoBitmap = if (logoFile != null && logoFile.exists()) {
         android.graphics.BitmapFactory.decodeFile(logoFile.absolutePath)
     } else null
@@ -153,7 +125,7 @@ private fun SingleWidgetContent(
     val configAction = actionStartActivity(configIntent)
     val lastUpdatedText = if (lastUpdated != null) "↻ $lastUpdated" else "↻"
 
-    if (SingleGymOccupancyWidget.size1x4 == size) {
+    if (WidgetSizes.size1x4 == size) {
         Row(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -162,41 +134,15 @@ private fun SingleWidgetContent(
                 .clickable(configAction),
             verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
-            Text(
-                text = occupancyText,
-                style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            )
+            OccupancyPercentage(occupancyText, 24.sp)
             Spacer(modifier = GlanceModifier.width(12.dp))
-            if (gymName != null) {
-                Text(
-                    text = gymName,
-                    style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 16.sp),
-                    maxLines = 1,
-                    modifier = GlanceModifier.defaultWeight()
-                )
-            } else {
-                Spacer(modifier = GlanceModifier.defaultWeight())
-            }
-            if (logoBitmap != null) {
-                Spacer(modifier = GlanceModifier.width(8.dp))
-                Image(
-                    provider = ImageProvider(logoBitmap),
-                    contentDescription = gymName,
-                    contentScale = ContentScale.Fit,
-                    modifier = GlanceModifier.height(36.dp).width(36.dp)
-                )
-            }
+            GymName(gymName, 16.sp)
+            Spacer(modifier = GlanceModifier.width(20.dp)) // ricordati ema di mettere questo dappertutto prima di Logo
+            Logo(logoBitmap, gymName, 36.dp, 36.dp)
             Spacer(modifier = GlanceModifier.width(8.dp))
-            Text(
-                text = lastUpdatedText,
-                style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 11.sp),
-                modifier = GlanceModifier
-                    .background(ImageProvider(R.drawable.refresh_button_bg))
-                    .padding(horizontal = 6.dp, vertical = 3.dp)
-                    .clickable(refreshAction)
-            )
+            RefreshButton(text = lastUpdatedText, onClick = refreshAction, fontSize = 14.sp, horizontalPadding = 8.dp, verticalPadding = 4.dp)
         }
-    } else if (SingleGymOccupancyWidget.size2x4 == size) {
+    } else if (WidgetSizes.size2x4 == size) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -210,84 +156,26 @@ private fun SingleWidgetContent(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Vertical.CenterVertically
             ) {
-                if (gymName != null) {
-                    Text(
-                        text = gymName,
-                        style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 18.sp, fontWeight = FontWeight.Bold),
-                        maxLines = 1,
-                        modifier = GlanceModifier.defaultWeight()
-                    )
-                } else {
-                    Spacer(modifier = GlanceModifier.defaultWeight())
-                }
-                if (logoBitmap != null) {
-                    Image(
-                        provider = ImageProvider(logoBitmap),
-                        contentDescription = gymName,
-                        contentScale = ContentScale.Fit,
-                        modifier = GlanceModifier.height(44.dp).width(44.dp)
-                    )
-                }
+                GymName(gymName, 18.sp)
+                Spacer(modifier = GlanceModifier.width(20.dp)) // or is it 12.dp?
+                Logo(logoBitmap, gymName, 36.dp, 36.dp)
             }
-
             Spacer(modifier = GlanceModifier.height(4.dp))
-
             Row(
                 modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
                 verticalAlignment = Alignment.Vertical.CenterVertically
             ) {
                 // Left: % stacked above ↻ time
                 Column(verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    Text(
-                        text = occupancyText,
-                        style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                    )
+                    OccupancyPercentage(occupancyText, 32.sp)
                     Spacer(modifier = GlanceModifier.height(16.dp))
-                    Text(
-                        text = lastUpdatedText,
-                        style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 14.sp),
-                        modifier = GlanceModifier
-                            .background(ImageProvider(R.drawable.refresh_button_bg))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                            .clickable(refreshAction)
-                    )
+                    RefreshButton(text = lastUpdatedText, onClick = refreshAction)
                 }
                 Spacer(modifier = GlanceModifier.width(12.dp))
-
-                // Right: chart above 07:00 / 22:00
+                // Right: chart above gym opening time/closing time (like: 07:00 / 22:00)
                 Column(modifier = GlanceModifier.defaultWeight().fillMaxSize()) {
-                    val chartBitmap = dayUtilization?.let {
-                    val chartW = (size.width.value * density * 0.65f).toInt()
-                    val chartH = (size.height.value * density * 0.55f).toInt()
-                    createOccupancyChart(dayUtilization, chartW, chartH)
-                    }
-                    if (chartBitmap != null) {
-                        Image(
-                            provider = ImageProvider(chartBitmap),
-                            contentDescription = "Occupancy chart",
-                            contentScale = ContentScale.FillBounds,
-                            modifier = GlanceModifier.fillMaxWidth().defaultWeight()
-                        )
-                    }
-                    if (dayUtilization != null) {
-                        Row(modifier = GlanceModifier.fillMaxWidth()) {
-                            Text(
-                                text = dayUtilization.earliestStartTime.take(5),
-                                style = TextStyle(
-                                    color = ColorProvider(R.color.widget_text_secondary),
-                                    fontSize = 11.sp
-                                )
-                            )
-                            Spacer(modifier = GlanceModifier.defaultWeight())
-                            Text(
-                                text = dayUtilization.latestEndTime.take(5),
-                                style = TextStyle(
-                                    color = ColorProvider(R.color.widget_text_secondary),
-                                    fontSize = 11.sp
-                                )
-                            )
-                        }
-                    }
+                    OccupancyChart(dayUtilization, 0.65f, 0.55f, 6f, 3f, size, density, GlanceModifier.defaultWeight())
+                    TimeRangeRow(dayUtilization, 11.sp)
                 }
             }
         }

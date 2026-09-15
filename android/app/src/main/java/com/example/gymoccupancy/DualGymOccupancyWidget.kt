@@ -17,6 +17,7 @@ import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
+import androidx.glance.action.Action
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
@@ -49,69 +50,41 @@ import androidx.glance.unit.ColorProvider
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-private val AppWidgetIdKey = ActionParameters.Key<Int>("appWidgetId")
-private val refreshTimestamps = mutableMapOf<Int, ArrayDeque<Long>>()
-private const val RATE_LIMIT_MAX = 3
-private const val RATE_LIMIT_WINDOW_MS = 60_000L
 
-private val OccupancyJson1Key = stringPreferencesKey("occupancy_json_1")
-private val OccupancyJson2Key = stringPreferencesKey("occupancy_json_2")
-private val GymName1Key = stringPreferencesKey("gym_name_1")
-private val GymName2Key = stringPreferencesKey("gym_name_2")
-private val LogoPath1Key = stringPreferencesKey("logo_path_1")
-private val LogoPath2Key = stringPreferencesKey("logo_path_2")
-private val LastUpdatedKey = stringPreferencesKey("last_updated")
+private object DualWidgetKeys {
+    val OccupancyJson1 = stringPreferencesKey("occupancy_json_1")
+    val OccupancyJson2 = stringPreferencesKey("occupancy_json_2")
+    val GymName1 = stringPreferencesKey("gym_name_1")
+    val GymName2 = stringPreferencesKey("gym_name_2")
+    val LogoPath1 = stringPreferencesKey("logo_path_1")
+    val LogoPath2 = stringPreferencesKey("logo_path_2")
+    val LastUpdated = stringPreferencesKey("last_updated")
+}
 
 suspend fun loadDualOccupancyIntoState(context: Context, appWidgetId: Int) = coroutineScope {
     val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
 
-    val gymId1 = getGymId(context, appWidgetId, slot = 1)
-    val operatorId1 = getOperatorId(context, appWidgetId, slot = 1)
-    val gymName1 = getGymName(context, appWidgetId, slot = 1)
-    val cachedLogo1 = logoFileForWidget(context, appWidgetId, slot = 1)
-
-    val gymId2 = getGymId(context, appWidgetId, slot = 2)
-    val operatorId2 = getOperatorId(context, appWidgetId, slot = 2)
-    val gymName2 = getGymName(context, appWidgetId, slot = 2)
-    val cachedLogo2 = logoFileForWidget(context, appWidgetId, slot = 2)
-
-    val json1Deferred = async { if (gymId1 != null && operatorId1 != null) fetchOccupancyRaw(operatorId1, gymId1) else null }
-    val json2Deferred = async { if (gymId2 != null && operatorId2 != null) fetchOccupancyRaw(operatorId2, gymId2) else null }
-    val logo1Deferred = async { if (cachedLogo1.exists()) cachedLogo1 else fetchAndCacheLogo(context, appWidgetId, slot = 1) }
-    val logo2Deferred = async { if (cachedLogo2.exists()) cachedLogo2 else fetchAndCacheLogo(context, appWidgetId, slot = 2) }
-
-    val json1 = json1Deferred.await()
-    val json2 = json2Deferred.await()
-    val logo1File = logo1Deferred.await()
-    val logo2File = logo2Deferred.await()
-
-    val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+    val slot1Deferred = async { fetchGymSlotData(context, appWidgetId, slot = 1) }
+    val slot2Deferred = async { fetchGymSlotData(context, appWidgetId, slot = 2) }
+    val slot1 = slot1Deferred.await()
+    val slot2 = slot2Deferred.await()
 
     updateAppWidgetState(context, glanceId) { prefs ->
-        if (json1 != null) prefs[OccupancyJson1Key] = json1 else prefs.remove(OccupancyJson1Key)
-        if (json2 != null) prefs[OccupancyJson2Key] = json2 else prefs.remove(OccupancyJson2Key)
-        if (gymName1 != null) prefs[GymName1Key] = gymName1 else prefs.remove(GymName1Key)
-        if (gymName2 != null) prefs[GymName2Key] = gymName2 else prefs.remove(GymName2Key)
-        if (logo1File != null) prefs[LogoPath1Key] = logo1File.absolutePath else prefs.remove(LogoPath1Key)
-        if (logo2File != null) prefs[LogoPath2Key] = logo2File.absolutePath else prefs.remove(LogoPath2Key)
-        prefs[LastUpdatedKey] = time
+        if (slot1.json != null) prefs[DualWidgetKeys.OccupancyJson1] = slot1.json else prefs.remove(DualWidgetKeys.OccupancyJson1)
+        if (slot2.json != null) prefs[DualWidgetKeys.OccupancyJson2] = slot2.json else prefs.remove(DualWidgetKeys.OccupancyJson2)
+        if (slot1.gymName != null) prefs[DualWidgetKeys.GymName1] = slot1.gymName else prefs.remove(DualWidgetKeys.GymName1)
+        if (slot2.gymName != null) prefs[DualWidgetKeys.GymName2] = slot2.gymName else prefs.remove(DualWidgetKeys.GymName2)
+        if (slot1.logoFile != null) prefs[DualWidgetKeys.LogoPath1] = slot1.logoFile.absolutePath else prefs.remove(DualWidgetKeys.LogoPath1)
+        if (slot2.logoFile != null) prefs[DualWidgetKeys.LogoPath2] = slot2.logoFile.absolutePath else prefs.remove(DualWidgetKeys.LogoPath2)
+        prefs[DualWidgetKeys.LastUpdated] = currentTimeLabel()
     }
 }
 
 class DualRefreshAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val appWidgetId = parameters[AppWidgetIdKey] ?: return
-        val now = System.currentTimeMillis()
-        val timestamps = refreshTimestamps.getOrPut(appWidgetId) { ArrayDeque() }
-        while (timestamps.isNotEmpty() && now - timestamps.first() > RATE_LIMIT_WINDOW_MS) {
-            timestamps.removeFirst()
-        }
-        if (timestamps.size >= RATE_LIMIT_MAX) return
-        timestamps.addLast(now)
+        if (!isRefreshAllowed(appWidgetId)) return
         loadDualOccupancyIntoState(context, appWidgetId)
         DualGymOccupancyWidget().update(context, glanceId)
     }
@@ -119,19 +92,8 @@ class DualRefreshAction : ActionCallback {
 
 class DualGymOccupancyWidget : GlanceAppWidget() {
 
-    companion object {
-        // I should test if these dimensions work on both tablets and phones
-        val size1x4 = DpSize(280.dp, 100.dp) // roughly a 1x4
-        val size2x4 = DpSize(280.dp, 200.dp) // roughly a 2x4
-        val size2x2 = DpSize(140.dp, 200.dp)// roughly a 2x2
-    }
-
     override val sizeMode = SizeMode.Responsive(
-        setOf(
-            size1x4,
-            size2x4,
-            size2x2
-        )
+        setOf(WidgetSizes.size1x4, WidgetSizes.size2x4, WidgetSizes.size2x2)
     )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -141,22 +103,20 @@ class DualGymOccupancyWidget : GlanceAppWidget() {
 
         provideContent {
             val prefs = currentState<Preferences>()
-            val json1 = prefs[OccupancyJson1Key]
-            val json2 = prefs[OccupancyJson2Key]
+            val json1 = prefs[DualWidgetKeys.OccupancyJson1]
+            val json2 = prefs[DualWidgetKeys.OccupancyJson2]
             val data1 = remember(json1) { json1?.let { parseOccupancyJson(it) } }
             val data2 = remember(json2) { json2?.let { parseOccupancyJson(it) } }
 
-            val gymName1 = prefs[GymName1Key]
-            val gymName2 = prefs[GymName2Key]
+            val gymName1 = prefs[DualWidgetKeys.GymName1]
+            val gymName2 = prefs[DualWidgetKeys.GymName2]
 
-            val logoPath1 = prefs[LogoPath1Key]
-            val logoPath2 = prefs[LogoPath2Key]
-
+            val logoPath1 = prefs[DualWidgetKeys.LogoPath1]
+            val logoPath2 = prefs[DualWidgetKeys.LogoPath2]
             val logoFile1 = remember(logoPath1) { logoPath1?.let { File(it) } }
             val logoFile2 = remember(logoPath2) { logoPath2?.let { File(it) } }
 
-            val lastUpdated = prefs[LastUpdatedKey]
-
+            val lastUpdated = prefs[DualWidgetKeys.LastUpdated]
             val size = LocalSize.current
 
             DualWidgetContent(
@@ -211,189 +171,123 @@ private fun DualWidgetContent(
             .background(R.color.widget_background)
             .padding(10.dp)
     ) {
-        if (DualGymOccupancyWidget.size2x2 == size) {
-            Row(
-                modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
-                verticalAlignment = Alignment.Vertical.CenterVertically
-            ) {
+        when (size) {
+            WidgetSizes.size2x4 -> {
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                    verticalAlignment = Alignment.Vertical.CenterVertically
+                ) {
+                    Column(
+                        modifier = GlanceModifier
+                            .defaultWeight()
+                            .fillMaxHeight()
+                            .clickable(configSlot1Action),
+                        verticalAlignment = Alignment.Vertical.Top
+                    ) {
+                        GymPanel(gymName1, dayUtilization1, logoFile1, size, density, hasGraph = true)
+                    }
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+                    Spacer(
+                        modifier = GlanceModifier
+                            .width(1.dp)
+                            .fillMaxHeight()
+                            .background(ColorProvider(R.color.widget_text_secondary))
+                    )
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+                    Column(
+                        modifier = GlanceModifier
+                            .defaultWeight()
+                            .fillMaxHeight()
+                            .clickable(configSlot2Action),
+                        verticalAlignment = Alignment.Vertical.Top
+                    ) {
+                        GymPanel(gymName2, dayUtilization2, logoFile2, size, density, hasGraph = true)
+                    }
+                    RefreshButton(lastUpdatedText, refreshAction, 11.sp, 6.dp, 3.dp)
+                }
+            }
+            WidgetSizes.size1x4 -> {
                 Column(
-                    modifier = GlanceModifier
-                        .defaultWeight()
-                        .fillMaxHeight()
-                        .clickable(configSlot1Action),
+                    modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
                     verticalAlignment = Alignment.Vertical.Top
                 ) {
-                    GymPanel(
-                        gymName = gymName1 ?: "Gym 1",
-                        dayUtilization = dayUtilization1,
-                        logoFile = logoFile1,
-                        size = size,
-                        density = density,
-                        hasGraph = true,
+                    Column(
+                        modifier = GlanceModifier
+                            .fillMaxWidth()
+                            .defaultWeight()
+                            .clickable(configSlot1Action)
+                    ) {
+                        GymPanel(gymName1, dayUtilization1, logoFile1, size, density, hasGraph = false)
+                    }
+
+                    Spacer(modifier = GlanceModifier.height(6.dp))
+                    Spacer(
+                        modifier = GlanceModifier
+                            .height(1.dp)
+                            .fillMaxWidth()
+                            .background(ColorProvider(R.color.widget_text_secondary))
                     )
+                    Spacer(modifier = GlanceModifier.height(6.dp))
+
+                    Column(
+                        modifier = GlanceModifier
+                            .fillMaxWidth()
+                            .defaultWeight()
+                            .clickable(configSlot2Action)
+                    ) {
+                        GymPanel(gymName2, dayUtilization2, logoFile2, size, density, hasGraph = false)
+                    }
                 }
-
-                Spacer(modifier = GlanceModifier.width(8.dp))
-
-                Spacer(
-                    modifier = GlanceModifier
-                        .width(1.dp)
-                        .fillMaxHeight()
-                        .background(ColorProvider(R.color.widget_text_secondary))
-                )
-
-                Spacer(modifier = GlanceModifier.width(8.dp))
-
-                Column(
-                    modifier = GlanceModifier
-                        .defaultWeight()
-                        .fillMaxHeight()
-                        .clickable(configSlot2Action),
-                    verticalAlignment = Alignment.Vertical.Top
-                ) {
-                    GymPanel(
-                        gymName = gymName2 ?: "Gym 2",
-                        dayUtilization = dayUtilization2,
-                        logoFile = logoFile2,
-                        size = size,
-                        density = density,
-                        hasGraph = true,
-                    )
-                }
+                RefreshButton(lastUpdatedText, refreshAction, 11.sp, 6.dp, 3.dp)
             }
-        } else if (DualGymOccupancyWidget.size1x4 == size) {
-            Column(
-                modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
-                verticalAlignment = Alignment.Vertical.Top
-            ) {
+            WidgetSizes.size2x2 -> {
                 Column(
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .defaultWeight()
-                        .clickable(configSlot1Action)
-                ) {
-                    GymPanel(
-                        gymName = gymName1 ?: "Gym 1",
-                        dayUtilization = dayUtilization1,
-                        logoFile = logoFile1,
-                        size = size,
-                        density = density,
-                        hasGraph = false,
-                    )
-                }
+                        modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                        verticalAlignment = Alignment.Vertical.Top
+                    ) {
+                        Column(
+                            modifier = GlanceModifier
+                                .fillMaxWidth()
+                                .defaultWeight()
+                                .clickable(configSlot1Action)
+                        ) {
+                            GymPanel(gymName1, dayUtilization1, logoFile1, size, density, hasGraph = true)
+                        }
 
-                Spacer(modifier = GlanceModifier.height(6.dp))
-                Spacer(
-                    modifier = GlanceModifier
-                        .height(1.dp)
-                        .fillMaxWidth()
-                        .background(ColorProvider(R.color.widget_text_secondary))
-                )
-                Spacer(modifier = GlanceModifier.height(6.dp))
+                        Spacer(modifier = GlanceModifier.height(6.dp))
+                        Spacer(
+                            modifier = GlanceModifier
+                                .height(1.dp)
+                                .fillMaxWidth()
+                                .background(ColorProvider(R.color.widget_text_secondary))
+                        )
+                        Spacer(modifier = GlanceModifier.height(6.dp))
 
-                Column(
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .defaultWeight()
-                        .clickable(configSlot2Action)
-                ) {
-                    GymPanel(
-                        gymName = gymName2 ?: "Gym 2",
-                        dayUtilization = dayUtilization2,
-                        logoFile = logoFile2,
-                        size = size,
-                        density = density,
-                        hasGraph = false,
-                    )
-                }
+                        Column(
+                            modifier = GlanceModifier
+                                .fillMaxWidth()
+                                .defaultWeight()
+                                .clickable(configSlot2Action)
+                        ) {
+                            GymPanel(gymName2, dayUtilization2, logoFile2, size, density, hasGraph = true)
+                        }
+                    }
+                RefreshButton(lastUpdatedText, refreshAction, 11.sp, 6.dp, 3.dp)
             }
-            Text(
-                text = lastUpdatedText,
-                style = TextStyle(
-                    color = ColorProvider(R.color.widget_text_secondary),
-                    fontSize = 11.sp
-                ),
-                modifier = GlanceModifier
-                    .background(ImageProvider(R.drawable.refresh_button_bg))
-                    .padding(horizontal = 6.dp, vertical = 3.dp)
-                    .clickable(refreshAction)
-            )
-        } else if (DualGymOccupancyWidget.size2x4 == size) {
-            Column(
-                modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
-                verticalAlignment = Alignment.Vertical.Top
-            ) {
-                Column(
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .defaultWeight()
-                        .clickable(configSlot1Action)
-                ) {
-                    GymPanel(
-                        gymName = gymName1 ?: "Gym 1",
-                        dayUtilization = dayUtilization1,
-                        logoFile = logoFile1,
-                        size = size,
-                        density = density,
-                        hasGraph = true,
-                    )
-                }
-
-                Spacer(modifier = GlanceModifier.height(6.dp))
-                Spacer(
-                    modifier = GlanceModifier
-                        .height(1.dp)
-                        .fillMaxWidth()
-                        .background(ColorProvider(R.color.widget_text_secondary))
-                )
-                Spacer(modifier = GlanceModifier.height(6.dp))
-
-                Column(
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .defaultWeight()
-                        .clickable(configSlot2Action)
-                ) {
-                    GymPanel(
-                        gymName = gymName2 ?: "Gym 2",
-                        dayUtilization = dayUtilization2,
-                        logoFile = logoFile2,
-                        size = size,
-                        density = density,
-                        hasGraph = true,
-                    )
-                }
-            }
-            Text(
-                text = lastUpdatedText,
-                style = TextStyle(
-                    color = ColorProvider(R.color.widget_text_secondary),
-                    fontSize = 11.sp
-                ),
-                modifier = GlanceModifier
-                    .background(ImageProvider(R.drawable.refresh_button_bg))
-                    .padding(horizontal = 6.dp, vertical = 3.dp)
-                    .clickable(refreshAction)
-            )
         }
     }
 }
 
-@SuppressLint("RestrictedApi")
 @Composable
 private fun GymPanel(
-    gymName: String,
+    gymName: String?,
     dayUtilization: DayUtilization?,
     logoFile: File?,
     size: androidx.compose.ui.unit.DpSize,
     density: Float,
     hasGraph: Boolean = true,
 ) {
-    val occupancyText = when {
-        dayUtilization?.isClosed == true -> "Closed"
-        dayUtilization != null -> "${dayUtilization.currentOccupancy}%"
-        else -> "—"
-    }
+    val occupancyText = occupancyText(dayUtilization)
 
     val logoBitmap = if (logoFile != null && logoFile.exists()) {
         BitmapFactory.decodeFile(logoFile.absolutePath)
@@ -408,58 +302,22 @@ private fun GymPanel(
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
-            Text(
-                text = gymName,
-                style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 13.sp, fontWeight = FontWeight.Bold),
-                maxLines = 1,
-                modifier = GlanceModifier.defaultWeight()
-            )
-            if (logoBitmap != null) {
-                Spacer(modifier = GlanceModifier.width(4.dp))
-                Image(
-                    provider = ImageProvider(logoBitmap),
-                    contentDescription = gymName,
-                    contentScale = ContentScale.Fit,
-                    modifier = GlanceModifier.height(20.dp).width(20.dp)
-                )
-            }
+            GymName(gymName, fontSize = 13.sp)
+            // here something
+            Spacer(modifier = GlanceModifier.width(4.dp))
+            Logo(logoBitmap, gymName, 20.dp, 20.dp)
         }
-
         Spacer(modifier = GlanceModifier.height(4.dp))
-
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
-            Text(
-                text = occupancyText,
-                style = TextStyle(color = ColorProvider(R.color.widget_text_primary), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            )
+            OccupancyPercentage(occupancyText, 20.sp)
         }
-
-        if (dayUtilization != null && hasGraph) {
-            Spacer(modifier = GlanceModifier.height(2.dp))
-            val chartW = (size.width.value * density * 0.45f).toInt()
-            val chartH = (size.height.value * density * 0.65f).toInt()
-            val chartBitmap = createOccupancyChart(dayUtilization, chartW, chartH, barSpacing = 3f, cornerRadius = 2.5f)
-            if (chartBitmap != null) {
-                Image(
-                    provider = ImageProvider(chartBitmap),
-                    contentDescription = "Occupancy chart",
-                    contentScale = ContentScale.FillBounds,
-                    modifier = GlanceModifier.fillMaxWidth().defaultWeight()
-                )
-            }
-            Row(modifier = GlanceModifier.fillMaxWidth()) {
-                Text(
-                    text = dayUtilization.earliestStartTime.take(5),
-                    style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 9.sp)
-                )
-                Spacer(modifier = GlanceModifier.defaultWeight())
-                Text(
-                    text = dayUtilization.latestEndTime.take(5),
-                    style = TextStyle(color = ColorProvider(R.color.widget_text_secondary), fontSize = 9.sp)
-                )
+        if (hasGraph) {
+            Column(modifier = GlanceModifier.defaultWeight().fillMaxSize()) {
+                OccupancyChart(dayUtilization, 0.45f, 0.65f, 3f, 2.5f, size, density, GlanceModifier.defaultWeight())
+                TimeRangeRow(dayUtilization, 9.sp)
             }
         }
     }
