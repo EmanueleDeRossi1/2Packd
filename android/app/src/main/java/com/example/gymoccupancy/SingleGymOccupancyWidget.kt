@@ -158,7 +158,7 @@ private fun SingleWidgetContent(
             ) {
                 GymName(gymName, 18.sp)
                 Spacer(modifier = GlanceModifier.width(20.dp)) // or is it 12.dp?
-                Logo(logoBitmap, gymName, 36.dp, 36.dp)
+                Logo(logoBitmap, gymName, 38.dp, 38.dp)
             }
             Spacer(modifier = GlanceModifier.height(4.dp))
             Row(
