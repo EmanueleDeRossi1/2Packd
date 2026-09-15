@@ -272,7 +272,7 @@ private fun DualWidgetContent(
                                 .defaultWeight()
                                 .clickable(configSlot1Action)
                         ) {
-                            GymPanel(gymName1, dayUtilization1, logoFile1, size, density, hasGraph = true)
+                            GymPanel(gymName1, dayUtilization1, logoFile1, size, density, hasGraph = false)
                         }
 
                         Spacer(modifier = GlanceModifier.height(6.dp))
@@ -290,7 +290,7 @@ private fun DualWidgetContent(
                                 .defaultWeight()
                                 .clickable(configSlot2Action)
                         ) {
-                            GymPanel(gymName2, dayUtilization2, logoFile2, size, density, hasGraph = true)
+                            GymPanel(gymName2, dayUtilization2, logoFile2, size, density, hasGraph = false)
                         }
                     }
                 RefreshButton(lastUpdatedText, refreshAction, 11.sp, 6.dp, 3.dp)
