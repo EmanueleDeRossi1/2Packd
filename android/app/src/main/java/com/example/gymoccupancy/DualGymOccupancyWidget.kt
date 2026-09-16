@@ -327,7 +327,7 @@ private fun GymPanel(
             GymName(gymName, fontSize = 16.sp)
             // here something
             Spacer(modifier = GlanceModifier.width(4.dp))
-            Logo(logoBitmap, gymName, 24.dp, 24.dp)
+            Logo(logoBitmap, gymName, 30.dp, 30.dp)
         }
         Spacer(modifier = GlanceModifier.height(4.dp))
         Row(
