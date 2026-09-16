@@ -5,7 +5,7 @@
     android:initialLayout="@layout/widget_preview"
     android:minWidth="40dp"
     android:minHeight="40dp"
-    android:previewImage="@drawable/dumbbell_icon"
+    android:previewImage="@drawable/dual_widget_preview"
     android:resizeMode="horizontal|vertical"
     android:maxResizeWidth="400dp"
     android:maxResizeHeight="180dp"
