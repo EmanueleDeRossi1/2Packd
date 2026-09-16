@@ -13,11 +13,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.Image
-import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
-import androidx.glance.action.Action
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
@@ -34,7 +31,6 @@ import androidx.glance.background
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
-import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Row
 import androidx.glance.layout.Box
 import androidx.glance.layout.Spacer
@@ -44,9 +40,6 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
-import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -325,7 +318,6 @@ private fun GymPanel(
             verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
             GymName(gymName, fontSize = 16.sp)
-            // here something
             Spacer(modifier = GlanceModifier.width(4.dp))
             Logo(logoBitmap, gymName, 30.dp, 30.dp)
         }

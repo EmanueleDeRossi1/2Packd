@@ -93,8 +93,6 @@ fun RefreshButton(
     horizontalPadding: Dp = 8.dp,
     verticalPadding: Dp = 4.dp,
     textColor: ColorProvider = ColorProvider(R.color.widget_text_primary),
-    // claude says previously dualWidget used the ColorProvider(R.color.widget_text_secondary)
-    // look this up how it looks now
 ) {
     Box(
         modifier = GlanceModifier
@@ -109,7 +107,6 @@ fun RefreshButton(
     }
 }
 
-// maybe you need to remove RowScope and put defaultWeidght() at call sites
 @SuppressLint("RestrictedApi")
 @Composable
 fun RowScope.GymName(
